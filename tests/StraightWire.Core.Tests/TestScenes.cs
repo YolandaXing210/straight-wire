@@ -40,4 +40,18 @@ namespace StraightWire.Core.Tests
 
         public Scene Build() => new Scene(_nodes, _wires, Spacing);
     }
+
+    /// <summary>The routing stages in Router's order, stopping before paths are built.</summary>
+    internal static class Pipeline
+    {
+        public static RouteContext Run(Scene scene, RouterState state = null)
+        {
+            var ctx = new RouteContext(scene, state);
+            BackWires.Prepare(ctx);
+            var lanes = Lanes.Prepare(ctx);
+            Lanes.Relax(lanes, ctx.Sp);
+            Diagonals.Decide(ctx);
+            return ctx;
+        }
+    }
 }
