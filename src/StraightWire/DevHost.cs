@@ -43,7 +43,8 @@ namespace StraightWire
                 read.Wires.Count(w => w.Display == GH_ParamWireDisplay.hidden),
                 state.Status, StyleNames.Summary(effective), effective.Overrides.Count, state.CanWrite,
                 CanvasHook.Count,
-                state.Routes == null ? "none" : state.Routes.Paths.Count + " paths/" + state.Routes.Junctions.Count + " dots",
+                state.Routes == null ? "none" : state.Routes.Paths.Count + " paths/" + state.Routes.Junctions.Count + " dots"
+                    + " drawn=" + (Instances.ActiveCanvas == null ? 0 : WireEditor.For(Instances.ActiveCanvas).LastRoutes?.Paths.Count ?? 0),
                 CanvasHook.LastRouteMilliseconds,
                 CanvasHook.HasWidget(Instances.ActiveCanvas) ? (UserSettings.WidgetVisible ? "shown" : "hidden") : "missing");
         }
@@ -58,6 +59,10 @@ namespace StraightWire
             string[] parts = command.Split(':');
             switch (parts[0])
             {
+                case "drag":
+                    CanvasHook.PretendDrag = parts.Length == 2 && parts[1] == "on";
+                    CanvasHook.RefreshAll();
+                    return "pretend drag " + (CanvasHook.PretendDrag ? "on" : "off");
                 case "fail-next-paint":
                     CanvasHook.ThrowOnNextRoute = true;
                     return "the next takeover will throw";

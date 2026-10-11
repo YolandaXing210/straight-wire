@@ -49,11 +49,36 @@ namespace StraightWire
             return state;
         }
 
+        /// <summary>Reads the document's settings again (after Undo or Redo swapped them) and drops its cached routes.</summary>
+        public static void Reload(GH_Document doc)
+        {
+            var state = Get(doc);
+            state.Status = SettingsJson.Parse(doc.ValueTable.GetValue(SettingsJson.Key, null), out var file);
+            state.File = file;
+            state.Routes = null;
+            Marker.Refresh(doc, state.Effective);
+        }
+
+        /// <summary>
+        /// Moves hand-drawn points with their components (see Anchoring.Settle). Written silently:
+        /// the move that caused it already marked the file modified and has its own undo step.
+        /// </summary>
+        public static void Settle(GH_Document doc)
+        {
+            var state = Get(doc);
+            if (state.Status != SettingsStatus.Ok || state.File.Points.Count == 0) return;
+            var anchors = SceneReader.Anchors(doc);
+            var next = Anchoring.Settle(state.File, id => anchors.TryGetValue(id, out var a) ? a : ((Pt, Pt)?)null);
+            if (ReferenceEquals(next, state.File)) return;
+            doc.ValueTable.SetValue(SettingsJson.Key, SettingsJson.Serialize(next));
+            state.File = next;
+        }
+
         /// <summary>
         /// Stores settings in the document (dropping overrides for wires that are gone) and marks it
         /// modified. Returns false, changing nothing, when the file belongs to a newer plugin.
         /// </summary>
-        public static bool Write(GH_Document doc, FileSettings next)
+        public static bool Write(GH_Document doc, FileSettings next, string undoName)
         {
             var state = Get(doc);
             if (!state.CanWrite)
@@ -62,7 +87,9 @@ namespace StraightWire
                 return false;
             }
             var pruned = next.Pruned(SceneReader.LiveWireIds(doc));
-            doc.ValueTable.SetValue(SettingsJson.Key, SettingsJson.Serialize(pruned));
+            string before = doc.ValueTable.GetValue(SettingsJson.Key, null), after = SettingsJson.Serialize(pruned);
+            doc.ValueTable.SetValue(SettingsJson.Key, after);
+            if (undoName != null && before != after) doc.UndoServer.PushUndoRecord(undoName, new SettingsUndo(before, after));
             Marker.Ensure(doc, pruned);
             state.Status = SettingsStatus.Ok;
             state.File = pruned;

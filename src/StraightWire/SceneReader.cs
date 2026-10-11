@@ -18,6 +18,9 @@ namespace StraightWire
 
         /// <summary>Routed by Core. False for Curve-style wires and for hidden-display wires.</summary>
         public bool Routed;
+
+        /// <summary>Hand-drawn: the file has points for this wire.</summary>
+        public bool Manual;
     }
 
     internal sealed class SceneRead
@@ -33,7 +36,7 @@ namespace StraightWire
     /// </summary>
     internal static class SceneReader
     {
-        public static SceneRead Read(GH_Document doc, FileSettings settings)
+        public static SceneRead Read(GH_Document doc, FileSettings settings, WireEditor editor = null)
         {
             var nodes = new List<SceneNode>();
             var wires = new List<SceneWire>();
@@ -62,9 +65,13 @@ namespace StraightWire
                         draws.Add(draw);
                         if (draw.Display == GH_ParamWireDisplay.hidden) continue;
                         if (draw.Routed) routed++;
+                        settings.Points.TryGetValue(draw.Id, out var manual);
+                        draw.Manual = manual != null;
+                        double? lane = manual == null && settings.Lanes.TryGetValue(draw.Id, out double f) ? f : (double?)null;
+                        double? pin = editor?.Pin is (string pinId, double pinX) && pinId == draw.Id ? pinX : (double?)null;
                         wires.Add(new SceneWire(draw.Id, source.InstanceGuid.ToString(),
                             source.Attributes.GetTopLevel.DocObject.InstanceGuid.ToString(), obj.InstanceGuid.ToString(),
-                            ToPt(draw.Start), ToPt(draw.End), draw.Style));
+                            ToPt(draw.Start), ToPt(draw.End), draw.Style, lane, pin, manual?.Points));
                     }
             }
             return new SceneRead { Scene = new Scene(nodes, wires, settings.Spacing), Wires = draws, RoutedCount = routed };
@@ -96,6 +103,19 @@ namespace StraightWire
         }
 
         public static string WireId(IGH_Param source, IGH_Param target) => source.InstanceGuid + ">" + target.InstanceGuid;
+
+        /// <summary>For every wire, the top-left corners of its source and target components: what hand-drawn points are anchored to.</summary>
+        public static Dictionary<string, (Pt Source, Pt Target)> Anchors(GH_Document doc)
+        {
+            var anchors = new Dictionary<string, (Pt Source, Pt Target)>(StringComparer.Ordinal);
+            foreach (var (source, target) in Connections(doc))
+            {
+                var s = source.Attributes.GetTopLevel.Bounds;
+                var t = target.Attributes.GetTopLevel.Bounds;
+                anchors[WireId(source, target)] = (new Pt(s.Left, s.Top), new Pt(t.Left, t.Top));
+            }
+            return anchors;
+        }
 
         static IEnumerable<IGH_Param> InputsOf(IGH_DocumentObject obj)
         {

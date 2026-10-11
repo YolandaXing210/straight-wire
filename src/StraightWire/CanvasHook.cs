@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using Grasshopper.GUI.Canvas;
+using Grasshopper.GUI.Canvas.Interaction;
 using StraightWire.Core;
 using StraightWire.Interop;
 using StraightWire.UI;
@@ -29,6 +30,9 @@ namespace StraightWire
 
         /// <summary>How long the last Router.Route call took, for DevHost.Describe.</summary>
         internal static double LastRouteMilliseconds;
+
+        /// <summary>Set through DevHost to act as if a component were being dragged.</summary>
+        internal static bool PretendDrag;
 
         readonly GH_Canvas _canvas;
         bool _takenOver, _failed;
@@ -144,19 +148,33 @@ namespace StraightWire
                     throw new InvalidOperationException("forced failure from DevHost");
                 }
                 var state = DocStore.Get(doc);
-                var read = SceneReader.Read(doc, state.Effective);
+                var editor = WireEditor.For(canvas);
+                // Routing waits while a component is dragged, and while a point or segment is.
+                bool componentDrag = PretendDrag || canvas.ActiveInteraction is GH_DragInteraction;
+                bool hold = componentDrag || editor.Live != null;
+                if (!componentDrag) DocStore.Settle(doc);
+                var read = SceneReader.Read(doc, state.Effective, editor);
+                editor.LastRead = read;
+                editor.LastRoutes = null;
                 if (read.RoutedCount == 0) return;   // all curves: Grasshopper draws everything
-                long fingerprint = read.Scene.Fingerprint();
-                if (state.Routes == null || state.Fingerprint != fingerprint)
+                RouteResult routes;
+                if (hold && state.Routes != null) routes = Frozen.Keep(state.Routes, read.Scene);
+                else
                 {
-                    var watch = Stopwatch.StartNew();
-                    state.Routes = Router.Route(read.Scene, state.RouterState);
-                    LastRouteMilliseconds = watch.Elapsed.TotalMilliseconds;
-                    state.Fingerprint = fingerprint;
+                    long fingerprint = read.Scene.Fingerprint();
+                    if (state.Routes == null || state.Fingerprint != fingerprint)
+                    {
+                        var watch = Stopwatch.StartNew();
+                        state.Routes = Router.Route(read.Scene, state.RouterState);
+                        LastRouteMilliseconds = watch.Elapsed.TotalMilliseconds;
+                        state.Fingerprint = fingerprint;
+                    }
+                    routes = state.Routes;
                 }
+                editor.LastRoutes = routes;
                 NativeWires.WarmFaintPen(canvas.Painter);
                 _read = read;
-                _routes = state.Routes;
+                _routes = routes;
                 Hide();
             }
             catch (Exception ex)

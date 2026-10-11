@@ -49,16 +49,16 @@ namespace StraightWire
         }
 
         public static void SetStyle(WireStyle style) =>
-            Change("set-style", (current, ids) => ids.Count > 0 ? current.WithOverride(ids, style) : current.WithMode(style));
+            Change("Wire Style", (current, ids) => ids.Count > 0 ? current.WithOverride(ids, style) : current.WithMode(style));
 
         public static void SetSpacing(double spacing) =>
-            Change("set-spacing", (current, ids) => current.WithSpacing(spacing));
+            Change("Wire Spacing", (current, ids) => current.WithSpacing(spacing));
 
         public static void FollowGlobal() =>
-            Change("follow-global", (current, ids) => ids.Count > 0 ? current.WithoutOverride(ids) : null);
+            Change("Follow Global", (current, ids) => ids.Count > 0 ? current.WithoutOverride(ids) : null);
 
         /// <summary>Writes the settings in effect into the file, so others with the plugin see them.</summary>
-        public static void SaveToFile() => Change("save-to-file", (current, ids) => current);
+        public static void SaveToFile() => Change("Save Wire Styles", (current, ids) => current);
 
         public static void MakeMyDefault()
         {
@@ -82,7 +82,7 @@ namespace StraightWire
                 if (doc == null) return;
                 var next = change(DocStore.Get(doc).Effective, SceneReader.WireIdsTouchingSelection(doc));
                 if (next == null) return;
-                if (!DocStore.Write(doc, next)) return;
+                if (!DocStore.Write(doc, next, key)) return;
                 CanvasHook.ResetFailures();
                 CanvasHook.RefreshAll();
             });
