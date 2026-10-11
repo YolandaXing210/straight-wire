@@ -7,6 +7,11 @@ using Xunit.Abstractions;
 
 namespace StraightWire.Core.Tests
 {
+    /// <summary>Timing tests run alone: sharing the CPU with other test classes skews them.</summary>
+    [CollectionDefinition("Performance", DisableParallelization = true)]
+    public class PerformanceCollection { }
+
+    [Collection("Performance")]
     public class RouterPerformanceTests
     {
 #if DEBUG
