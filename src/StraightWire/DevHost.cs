@@ -32,13 +32,15 @@ namespace StraightWire
         {
             var doc = Instances.ActiveCanvas?.Document;
             if (doc == null) return "no document on the canvas";
-            var read = SceneReader.Read(doc, SettingsFor(doc));
-            return string.Format(CultureInfo.InvariantCulture, "nodes={0} wires={1} routed={2} curve={3} hidden={4}",
+            var state = DocStore.Get(doc);
+            var effective = state.Effective;
+            var read = SceneReader.Read(doc, effective);
+            return string.Format(CultureInfo.InvariantCulture,
+                "nodes={0} wires={1} routed={2} curve={3} hidden={4} settings={5} effective={6} overrides={7} writable={8}",
                 read.Scene.Nodes.Count, read.Wires.Count, read.RoutedCount,
                 read.Wires.Count(w => w.Style == WireStyle.Curve && w.Display != GH_ParamWireDisplay.hidden),
-                read.Wires.Count(w => w.Display == GH_ParamWireDisplay.hidden));
+                read.Wires.Count(w => w.Display == GH_ParamWireDisplay.hidden),
+                state.Status, StyleNames.Summary(effective), effective.Overrides.Count, state.CanWrite);
         }
-
-        static FileSettings SettingsFor(GH_Document doc) => new FileSettings(WireStyle.Diagonal, Routing.DefaultSpacing);
     }
 }
