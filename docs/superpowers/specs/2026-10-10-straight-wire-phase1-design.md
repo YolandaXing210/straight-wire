@@ -65,14 +65,14 @@ Not in this phase:
 
 ```
 straight-wire/
-  src/StraightWire.Core/          netstandard2.0, pure C#, no Grasshopper reference
+  src/StraightWire.Core/          net7.0, pure C#, no Grasshopper reference
   src/StraightWire/               net7.0, builds StraightWire.gha
   tests/StraightWire.Core.Tests/  xUnit
   yak/                            manifest.yml, icon
   docs/
 ```
 
-Dependencies point one way: StraightWire depends on StraightWire.Core. Core does not know Grasshopper exists, and everything Grasshopper-specific lives in the plugin project. The plugin references the Grasshopper 8.0.x NuGet package for compilation only, so the package is not shipped. That means the plugin loads on any Rhino 8 service release.
+Dependencies point one way: StraightWire depends on StraightWire.Core. Core does not know Grasshopper exists, and everything Grasshopper-specific lives in the plugin project. The plugin references the Grasshopper 8.0.x NuGet package for compilation only, so the package is not shipped. That means the plugin loads on any Rhino 8 service release. The Core sources are compiled into the .gha, so the plugin installs as a single file; the Core project exists for the tests.
 
 ### 5.1 StraightWire.Core
 
@@ -193,19 +193,9 @@ Selection changes only colour and is not part of the fingerprint, so clicking to
 
 ### 7.2 How wires are drawn
 
-- **Colour and gradient.** Use Grasshopper's own `canvas.Painter.GenerateWirePen_Fill(a, b, asel, bsel, empty)`:
-  - `asel` and `bsel` say whether the source and target top-level objects are selected.
-  - `empty` means the source parameter has no data.
-
-  This matches the native selection highlight, the orange empty-data wire and the user's skin colours.
-- **Wire type.** `GH_Painter.DetermineWireType(...)` decides item, list or tree from the source parameter's `VolatileData`; check the argument against native behaviour during implementation.
-  - Item is one line.
-  - List is two parallel lines (`offsetPath` ±d).
-  - Tree is two parallel dashed lines.
-
-  Line width, offset and dash pattern are taken from a native render at zoom 1 during implementation.
+- **Pens.** Routed wires are drawn with Grasshopper's own wire pen (`GH_Painter.GenerateWirePen`, reached by reflection), so item / list / tree / faint / empty / selection all match native. Unrouted wires are drawn with the public `GH_Painter.DrawConnection`. When Grasshopper's fancy-wires setting is off, every wire uses the generic type, as native does. Before every takeover the faint pen is requested once while the colours are still real, because Grasshopper caches that pen the first time it is built.
 - **Faint display** (target parameter `WireDisplay == faint`): the wire is routed and drawn with the width and transparency of native faint wires, measured from a native render. When one end is selected it draws normally.
-- **Hidden display:** the wire is not routed. Whatever native Grasshopper shows for a hidden wire when one of its ends is selected, we show the same thing, drawn along the native curve from `GH_Painter.ConnectionPath`. Native behaviour is checked against a native render during implementation.
+- **Hidden display:** not routed. With neither end selected Grasshopper draws only a small arc symbol at the input, which does not use the wire colours, so it is left alone; with an end selected the wire is drawn with `DrawConnection`.
 - **Curve-style wires** (the global style is straight but this wire is overridden to Curve): not routed, drawn as native curves with `GH_Painter.ConnectionPath`.
 - **Junction dots:** filled circles of radius 2.6, in the group's wire colour.
 - **Viewport culling:** only wires and dots whose bounding box intersects `canvas.Viewport.VisibleRegion` are drawn.
@@ -283,8 +273,8 @@ Stored in `GH_SettingsServer("StraightWire")` with the keys `DefaultMode`, `Defa
 
 ### 9.5 Packaging and publishing
 
-- `dotnet build -c Release` produces `StraightWire.gha` and `StraightWire.Core.dll`.
-- `yak/manifest.yml` gives the name `straight-wire`, a version matching `GH_AssemblyInfo`, the author, description, icon and project link.
+- `dotnet build -c Release` produces `StraightWire.gha`.
+- `package.sh` writes the Yak manifest (name `StraightWire`) and builds the package, following WireDrop.
 - Rhino's bundled `yak` (`/Applications/Rhino 8.app/Contents/Resources/bin/yak`) runs `yak build` to produce the package, for the single `any` platform.
 - You run the final `yak login` and `yak push` with your own McNeel account.
 
@@ -346,7 +336,7 @@ Plugin (in Rhino, through the MCP):
   - Grasshopper, GH_IO and RhinoCommon resolve from the default context, so their types are shared.
   - No Rhino restart is needed.
 - **What hot reload covers:** only canvas drawing, the menu and the widget. It does not register the marker component, because Grasshopper's component registration cannot be undone.
-- **Real install testing:** the marker component and the Package Manager flow are tested with a real install. Copy the .gha to `~/Library/Application Support/McNeel/Rhinoceros/8.0/Plug-ins/Grasshopper/Libraries/` and restart Rhino.
+- **Real install testing:** the marker component and the Package Manager flow are tested with a real install. Copy the .gha to `~/Library/Application Support/McNeel/Rhinoceros/8.0/Plug-ins/Grasshopper (b45a29b1-4343-4035-989e-044e8580d9cf)/Libraries/` and restart Rhino.
 
 ## 14. Left for later phases
 

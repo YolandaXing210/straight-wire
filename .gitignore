@@ -9,3 +9,5 @@ obj/
 *.3dmbak
 *.rhl
 *.yak
+dist/
+artifacts/

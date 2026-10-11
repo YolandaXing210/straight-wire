@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <RootNamespace>StraightWire.Core</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- net7.0 is out of support, but it is what Rhino 8 plugins target. -->
+    <NoWarn>NETSDK1138</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Declared here rather than in source, so it is not compiled into the .gha. -->
+    <InternalsVisibleTo Include="StraightWire.Core.Tests" />
+  </ItemGroup>
+
+</Project>
