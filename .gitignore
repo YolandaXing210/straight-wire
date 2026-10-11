@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+.DS_Store
+.playwright-mcp/
+*.3dm
+*.3dmbak
+*.rhl
+*.yak

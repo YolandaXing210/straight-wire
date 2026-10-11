@@ -1,0 +1,1439 @@
+<title>Straight Wire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: slim toolbar on top, a framed Grasshopper canvas filling the screen, status strip below. */
+:root {
+  --chrome: #e5e3dc; --raise: #f5f4f0; --fg: #1c1d1f; --muted: #6a675f; --line: #c4c1b8;
+  --accent: #4a8519; --accent-ink: #fbfdf7; --shadow-ui: rgba(40,36,28,.18);
+  --cv-bg: #d3d0c7; --cv-grid: #c8c5bb;
+  --node: #f2f1ec; --node-strip: #d3d1ca; --node-edge: #2a2b2d; --node-text: #18191b;
+  --wire: rgba(28,29,31,.86); --sel: #4f9418; --sel-fill: #c3e39b;
+  --panel: #fbf18a; --panel-edge: #8b812c; --panel-text: #2a2810;
+  --slider-track: #8a877f; --channel: rgba(79,148,24,.14); --shadow: rgba(40,36,28,.22);
+  --f-ui: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --f-node: "IBM Plex Sans Condensed", "Arial Narrow", "PingFang SC", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --chrome: #18191b; --raise: #232528; --fg: #e8e6e0; --muted: #9d9a92; --line: #34363a;
+    --accent: #94d058; --accent-ink: #13200a; --shadow-ui: rgba(0,0,0,.4);
+    --cv-bg: #2a2c2f; --cv-grid: #323539;
+    --node: #45484d; --node-strip: #35383c; --node-edge: #0f1011; --node-text: #eeede8;
+    --wire: rgba(228,226,219,.8); --sel: #9ad85e; --sel-fill: #56763a;
+    --panel: #d8ce55; --panel-edge: #6c661f; --panel-text: #23210b;
+    --slider-track: #8f8d86; --channel: rgba(154,216,94,.12); --shadow: rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --chrome: #18191b; --raise: #232528; --fg: #e8e6e0; --muted: #9d9a92; --line: #34363a;
+  --accent: #94d058; --accent-ink: #13200a; --shadow-ui: rgba(0,0,0,.4);
+  --cv-bg: #2a2c2f; --cv-grid: #323539;
+  --node: #45484d; --node-strip: #35383c; --node-edge: #0f1011; --node-text: #eeede8;
+  --wire: rgba(228,226,219,.8); --sel: #9ad85e; --sel-fill: #56763a;
+  --panel: #d8ce55; --panel-edge: #6c661f; --panel-text: #23210b;
+  --slider-track: #8f8d86; --channel: rgba(154,216,94,.12); --shadow: rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+
+html { height: 100%; box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+[hidden] { display: none !important; }
+body { height: 100%; background: var(--chrome); color: var(--fg); font: 14px/1.4 var(--f-ui); overflow: hidden; }
+
+.app { height: 100%; display: flex; flex-direction: column; gap: 8px; padding-inline: 16px; padding-block: 10px 8px; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; min-width: 0; }
+.brand b { font-weight: 600; font-size: 15px; letter-spacing: .01em; white-space: nowrap; }
+.brand span { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+kbd { font: 500 10.5px/1 var(--f-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 2px 4px; }
+
+.styler { display: inline-flex; align-items: center; gap: 8px; }
+.scope { font: 500 11.5px var(--f-ui); color: var(--muted); border: 1px dashed var(--line); border-radius: 999px; padding: 2px 9px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scope.on { color: var(--accent); border: 1px solid var(--accent); }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--raise); }
+.seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--fg); font: 500 13px var(--f-ui); padding: 5px 9px; border-radius: 5px; cursor: pointer; }
+.seg button svg { width: 16px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.seg button:hover { background: var(--chrome); }
+.seg button[aria-checked="true"] { background: var(--fg); color: var(--raise); }
+.seg button[aria-checked="true"] kbd { color: inherit; border-color: currentColor; opacity: .55; }
+
+.ctl { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.ctl input { width: 88px; accent-color: var(--accent); }
+.ctl output { font: 500 12px var(--f-mono); min-width: 2ch; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.sw { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; position: relative; }
+.sw input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sw .track { width: 30px; height: 18px; border-radius: 9px; background: var(--line); position: relative; transition: background .15s; }
+.sw .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--raise); box-shadow: 0 1px 2px var(--shadow-ui); transition: transform .15s; }
+.sw input:checked + .track { background: var(--accent); }
+.sw input:checked + .track::after { transform: translateX(12px); }
+
+.acts { display: inline-flex; gap: 6px; }
+.btn { display: inline-flex; align-items: center; gap: 7px; font: 500 13px var(--f-ui); color: var(--fg); background: var(--raise); border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary kbd { color: inherit; border-color: currentColor; opacity: .6; }
+
+button:focus-visible, .sw input:focus-visible + .track, .ctl input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stage { position: relative; flex: 1; min-height: 240px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--cv-bg); }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.demo { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; align-items: center; }
+.demo span, .demo button { font: 12px/1.5 var(--f-ui); color: var(--muted); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+.demo button { color: var(--fg); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.demo button:hover { border-color: var(--muted); }
+.toast { position: absolute; left: 50%; top: 12px; transform: translate(-50%, -6px); opacity: 0; transition: opacity .18s, transform .18s; background: var(--fg); color: var(--raise); padding: 6px 12px; border-radius: 6px; font-size: 13px; pointer-events: none; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.zoom { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--raise); }
+.zoom button { width: 30px; height: 28px; border: 0; background: transparent; color: var(--fg); font: 500 16px/1 var(--f-ui); cursor: pointer; }
+.zoom button + button { border-top: 1px solid var(--line); }
+.zoom button:hover { background: var(--chrome); }
+.selbar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 4px 4px 4px 12px; box-shadow: 0 4px 14px var(--shadow-ui); max-width: calc(100% - 100px); }
+.selbar span { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 6px; min-width: 0; font-variant-numeric: tabular-nums; }
+.selbar button { font: 500 12.5px var(--f-ui); color: var(--fg); background: transparent; border: 0; border-radius: 5px; padding: 4px 8px; cursor: pointer; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.selbar button:hover { background: var(--chrome); }
+
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; font-size: 12px; color: var(--muted); }
+.hints { margin-right: auto; min-width: 0; }
+.legend { display: inline-flex; gap: 14px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend svg { fill: none; stroke: var(--fg); stroke-width: 1.2; }
+.count { font: 500 12px var(--f-mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .brand span, .hints, .bar kbd, .selbar kbd, .demo span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast, .sw .track, .sw .track::after { transition: none; }
+}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand"><b>Straight Wire</b><span>Grasshopper 直线走线插件 · 手感原型</span></div>
+    <div class="styler">
+      <span class="scope" id="scope" title="1 / 2 / 3 作用的范围：没有选中时改全部，有选中时只改所选">全部</span>
+      <div class="seg" role="radiogroup" aria-label="走线样式">
+        <button type="button" role="radio" aria-checked="true" data-mode="bezier" id="m-bezier"><svg viewBox="0 0 16 14" aria-hidden="true"><path d="M1 11C8 11 8 3 15 3"/></svg>曲线<kbd>1</kbd></button>
+        <button type="button" role="radio" aria-checked="false" data-mode="ortho" id="m-ortho"><svg viewBox="0 0 16 14" aria-hidden="true"><path d="M1 11H8V3H15"/></svg>直角<kbd>2</kbd></button>
+        <button type="button" role="radio" aria-checked="false" data-mode="diag" id="m-diag"><svg viewBox="0 0 16 14" aria-hidden="true"><path d="M1 11H5L13 3H15"/></svg>45°<kbd>3</kbd></button>
+      </div>
+    </div>
+    <label class="ctl" for="sp">线距<input type="range" id="sp" min="6" max="20" step="1" value="10"><output id="spv" for="sp">10</output></label>
+    <label class="sw" for="snap"><input type="checkbox" id="snap" checked><span class="track" aria-hidden="true"></span>吸附</label>
+    <div class="acts">
+      <button type="button" class="btn primary" id="tidy"><span id="tidyLabel">整理全部</span><kbd>T</kbd></button>
+      <button type="button" class="btn" id="fitb">适配<kbd>F</kbd></button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="cv" aria-label="Grasshopper 画布模拟，可选中、拖动电池和走线"></canvas>
+    <div class="demo"><span>示例定义 · 扭转塔楼</span><button type="button" id="scramble">打乱示例<kbd>R</kbd></button></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="selbar" id="selbar" hidden>
+      <span id="selinfo"></span>
+      <button type="button" id="selreset">复位走线<kbd>Del</kbd></button>
+      <button type="button" id="selclear">取消选择<kbd>Esc</kbd></button>
+    </div>
+    <div class="zoom"><button type="button" id="zin" aria-label="放大">+</button><button type="button" id="zout" aria-label="缩小">−</button></div>
+  </main>
+
+  <footer class="foot">
+    <span class="hints">左键拖空白框选 · 右键或空格拖动平移 · 拖拐点改形状（按住 Alt 不吸附）· 双击线加点，双击点删点</span>
+    <span class="legend">
+      <span><svg width="22" height="8" aria-hidden="true"><path d="M1 4H21"/></svg>单值</span>
+      <span><svg width="22" height="8" aria-hidden="true"><path d="M1 2.5H21M1 5.5H21"/></svg>列表</span>
+      <span><svg width="22" height="8" aria-hidden="true"><path d="M1 2.5H21M1 5.5H21" stroke-dasharray="3 2"/></svg>树</span>
+    </span>
+    <span class="count" id="count">直连 0 / 18</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d'), stage = $('stage');
+  const toastEl = $('toast'), countEl = $('count'), scopeEl = $('scope'), tidyLabel = $('tidyLabel');
+  const selbar = $('selbar'), selInfo = $('selinfo');
+  const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // World units are Grasshopper canvas pixels at 100% zoom.
+  const ROW = 20, STUB = 18, CH = 14, DSTUB = 6, GRID = 10, CLR = 8, VG = 12, MDUR = 420, STAG = 240;
+  const NAMES = { bezier: '曲线', ortho: '直角', diag: '45°' };
+  const MODE_MSG = { bezier: '全部走线：Grasshopper 原生曲线', ortho: '全部走线：直角，按通道排开', diag: '全部走线：45°，没有遮挡时只拐两次' };
+  let SP = 10, globalMode = 'bezier', snapOn = true;
+  const selN = new Set(), selW = new Set();
+  let hoverW = null, drag = null, guides = [], spaceDown = false, lastMend = -1e9;
+  const view = { s: 1, ox: 0, oy: 0 };
+  let viewAnim = null, W = 1, H = 1, DPR = 1, fitted = false, lastCount = -1;
+  let C = {}, F = {};
+
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+  function readTokens() {
+    const cs = getComputedStyle(document.documentElement);
+    const g = n => cs.getPropertyValue(n).trim();
+    C = {
+      bg: g('--cv-bg'), grid: g('--cv-grid'), node: g('--node'), strip: g('--node-strip'), edge: g('--node-edge'),
+      text: g('--node-text'), wire: g('--wire'), sel: g('--sel'), selFill: g('--sel-fill'), panel: g('--panel'),
+      panelEdge: g('--panel-edge'), panelText: g('--panel-text'), track: g('--slider-track'), channel: g('--channel'), shadow: g('--shadow')
+    };
+    F = { node: g('--f-node'), mono: g('--f-mono') };
+  }
+
+  // ---------- the example definition: a twisted tower ----------
+  const DEF = [
+    { id: 'floors', kind: 'slider', name: 'Floors', min: 2, max: 60, value: 24, dec: 0, x: 40, y: 60 },
+    { id: 'fh', kind: 'slider', name: 'Floor H', min: 2.5, max: 5, value: 3.2, dec: 2, x: 70, y: 150 },
+    { id: 'radius', kind: 'slider', name: 'Radius', min: 4, max: 30, value: 12, dec: 1, x: 20, y: 410 },
+    { id: 'sides', kind: 'slider', name: 'Sides', min: 3, max: 12, value: 6, dec: 0, x: 80, y: 480 },
+    { id: 'twist', kind: 'slider', name: 'Twist', min: 0, max: 0.1, value: 0.02, dec: 3, x: 330, y: 575 },
+    { id: 'div', kind: 'slider', name: 'Divisions', min: 4, max: 40, value: 16, dec: 0, x: 560, y: 20 },
+    { id: 'series', kind: 'comp', name: 'Series', ins: ['S', 'N', 'C'], outs: ['S'], x: 330, y: 80 },
+    { id: 'unitz', kind: 'comp', name: 'Z', ins: ['F'], outs: ['V'], x: 500, y: 250 },
+    { id: 'poly', kind: 'comp', name: 'Polygon', ins: ['P', 'R', 'S'], outs: ['P'], x: 300, y: 330 },
+    { id: 'mult', kind: 'comp', name: 'A×B', ins: ['A', 'B'], outs: ['R'], x: 590, y: 420 },
+    { id: 'move', kind: 'comp', name: 'Move', ins: ['G', 'T'], outs: ['G', 'X'], x: 660, y: 190 },
+    { id: 'rot', kind: 'comp', name: 'Rotate', ins: ['G', 'A', 'P'], outs: ['G', 'X'], x: 790, y: 330 },
+    { id: 'loft', kind: 'comp', name: 'Loft', ins: ['C', 'O'], outs: ['L'], x: 960, y: 200 },
+    { id: 'divc', kind: 'comp', name: 'Divide', ins: ['C', 'N', 'K'], outs: ['P', 'T', 't'], x: 900, y: 450 },
+    { id: 'flip', kind: 'comp', name: 'Flip', ins: ['D'], outs: ['D'], x: 1080, y: 480 },
+    { id: 'intc', kind: 'comp', name: 'IntCrv', ins: ['V', 'D', 'P', 'K'], outs: ['C', 'L', 'D'], x: 960, y: 600 },
+    { id: 'area', kind: 'comp', name: 'Area', ins: ['G'], outs: ['A', 'C'], x: 1110, y: 150 },
+    { id: 'panel', kind: 'panel', name: 'Panel', x: 1250, y: 110 }
+  ];
+  const WDEF = [
+    ['floors', 0, 'series', 2, 'item'], ['fh', 0, 'series', 1, 'item'],
+    ['series', 0, 'unitz', 0, 'list'], ['series', 0, 'mult', 0, 'list'], ['twist', 0, 'mult', 1, 'item'],
+    ['radius', 0, 'poly', 1, 'item'], ['sides', 0, 'poly', 2, 'item'],
+    ['poly', 0, 'move', 0, 'item'], ['unitz', 0, 'move', 1, 'list'],
+    ['move', 0, 'rot', 0, 'list'], ['mult', 0, 'rot', 1, 'list'],
+    ['rot', 0, 'loft', 0, 'list'], ['rot', 0, 'divc', 0, 'list'], ['div', 0, 'divc', 1, 'item'],
+    ['divc', 0, 'flip', 0, 'tree'], ['flip', 0, 'intc', 0, 'tree'],
+    ['loft', 0, 'area', 0, 'item'], ['area', 0, 'panel', 0, 'item']
+  ];
+
+  function sizeNode(n) {
+    if (n.kind === 'slider') { n.w = 200; n.h = 20; return; }
+    if (n.kind === 'panel') { n.w = 130; n.h = 56; return; }
+    const rows = Math.max(n.ins.length, n.outs.length, 1);
+    const nameH = Math.ceil((n.name.length * 6.4 + 14) / ROW) * ROW;
+    n.h = Math.max(rows * ROW, nameH, 2 * ROW);
+    const col = list => Math.max(...list.map(s => s.length)) * 6.5 + 12;
+    n.iw = col(n.ins); n.ow = col(n.outs);
+    n.w = Math.round(n.iw + 20 + n.ow);
+  }
+
+  const nodes = DEF.map((d, i) => { const n = Object.assign({}, d, { idx: i, hx: d.x, hy: d.y, vx: 0, vy: 0, tx: null, ty: null, wait: 0 }); sizeNode(n); return n; });
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const wires = WDEF.map(([a, ai, b, bi, type], i) => ({
+    idx: i, a: byId[a], ai, b: byId[b], bi, type,
+    ovr: null, pts: null, snap: null, mend: -1e9,
+    f: null, fv: 0, manual: null, pin: false,
+    dg: null, dgv: 0, dgt: 0, xo: 0, xov: 0, xt: 0, flash: -1e9
+  }));
+  const order = nodes.slice();
+  function toFront(n) { const i = order.indexOf(n); if (i >= 0) { order.splice(i, 1); order.push(n); } }
+
+  const nIn = n => n.kind === 'comp' ? n.ins.length : 1;
+  const nOut = n => n.kind === 'comp' ? n.outs.length : 1;
+  const inOff = (n, i) => n.h * (i + 0.5) / nIn(n);
+  const outOff = (n, j) => n.h * (j + 0.5) / nOut(n);
+  const portName = (n, j, out) => n.kind === 'comp' ? (out ? n.outs[j] : n.ins[j]) : '';
+  const wireLabel = w => {
+    const a = portName(w.a, w.ai, true), b = portName(w.b, w.bi, false);
+    return `${w.a.name}${a ? '.' + a : ''} → ${w.b.name}${b ? '.' + b : ''}`;
+  };
+
+  // Each wire follows the global style unless the user gave it its own.
+  const styleOf = w => w.ovr || globalMode;
+  const isTrace = w => styleOf(w) !== 'bezier';
+  const editable = w => isTrace(w) && !w.snap;
+
+  // ---------- geometry helpers ----------
+  function segDist(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+    const t = l2 ? clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0, 1) : 0;
+    return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t);
+  }
+  function polyDist(p, P) { let m = Infinity; for (let i = 0; i < P.length - 1; i++) m = Math.min(m, segDist(p, P[i], P[i + 1])); return m; }
+  const orient = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  function segSegDist(p1, p2, q1, q2) {
+    const d1 = orient(q1, q2, p1), d2 = orient(q1, q2, p2), d3 = orient(p1, p2, q1), d4 = orient(p1, p2, q2);
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+    return Math.min(segDist(p1, q1, q2), segDist(p2, q1, q2), segDist(q1, p1, p2), segDist(q2, p1, p2));
+  }
+  function polyPolyDist(P, Q, lim) {
+    let m = Infinity;
+    for (let i = 0; i < P.length - 1; i++) for (let j = 0; j < Q.length - 1; j++) {
+      const d = segSegDist(P[i], P[i + 1], Q[j], Q[j + 1]);
+      if (d < m) { m = d; if (m < lim) return m; }
+    }
+    return m;
+  }
+  function segRectHit(a, b, r) {
+    let t0 = 0, t1 = 1;
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const p = [-dx, dx, -dy, dy], q = [a[0] - r.x0, r.x1 - a[0], a[1] - r.y0, r.y1 - a[1]];
+    for (let i = 0; i < 4; i++) {
+      if (p[i] === 0) { if (q[i] < 0) return false; continue; }
+      const t = q[i] / p[i];
+      if (p[i] < 0) { if (t > t1) return false; if (t > t0) t0 = t; }
+      else { if (t < t0) return false; if (t < t1) t1 = t; }
+    }
+    return true;
+  }
+  function bboxOf(P, pad) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of P) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+    return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
+  }
+  const bbHit = (a, b) => a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1;
+
+  // ---------- routing: each bent wire gets one vertical "lane" ----------
+  function feasible(w) {
+    const sx = w.ax, sy = w.ay, tx = w.bx, ty = w.by;
+    let lo = sx + STUB, hi = tx - STUB;
+    if (lo > hi) { const m = (sx + tx) / 2; return { lo: m, hi: m }; }
+    const lo0 = lo, hi0 = hi;
+    const y0 = Math.min(sy, ty), y1 = Math.max(sy, ty);
+    const forb = [];
+    for (const n of nodes) {
+      if (n === w.a || n === w.b) continue;
+      const x0 = n.x - CLR, x1 = n.x + n.w + CLR, ny0 = n.y - CLR, ny1 = n.y + n.h + CLR;
+      if (x1 <= lo0 || x0 >= hi0) continue;
+      if (sy > ny0 && sy < ny1 && x0 > sx) hi = Math.min(hi, x0);
+      if (ty > ny0 && ty < ny1 && x1 < tx) lo = Math.max(lo, x1);
+      if (ny1 > y0 && ny0 < y1) forb.push([x0, x1]);
+    }
+    if (lo > hi) return { lo: lo0, hi: hi0 };
+    let segs = [[lo, hi]];
+    for (const [p, q] of forb) {
+      const next = [];
+      for (const [u, v] of segs) {
+        if (q <= u || p >= v) { next.push([u, v]); continue; }
+        if (p > u) next.push([u, p]);
+        if (q < v) next.push([q, v]);
+      }
+      segs = next;
+    }
+    if (!segs.length) return { lo, hi };
+    const probe = w.pin ? w.dragX : w.lane;
+    if (probe != null) {
+      let pick = null, pd = Infinity;
+      for (const s of segs) {
+        if (s[1] - s[0] < 4) continue;
+        const d = probe < s[0] ? s[0] - probe : probe > s[1] ? probe - s[1] : 0;
+        if (d < pd) { pd = d; pick = s; }
+      }
+      if (pick && (w.pin || pd <= 1)) return { lo: pick[0], hi: pick[1] };
+    }
+    let best = segs[0];
+    for (const s of segs) {
+      const ds = (s[1] - s[0]) - (best[1] - best[0]);
+      if (ds > 1 || (ds > -1 && s[0] > best[0])) best = s;
+    }
+    return { lo: best[0], hi: best[1] };
+  }
+
+  function hv(hy, hx0, hx1, vx, vy0, vy1) {
+    const x0 = Math.min(hx0, hx1), x1 = Math.max(hx0, hx1), y0 = Math.min(vy0, vy1), y1 = Math.max(vy0, vy1);
+    return vx > x0 + 0.01 && vx < x1 - 0.01 && hy > y0 + 0.01 && hy < y1 - 0.01 ? 1 : 0;
+  }
+  function crossCount(A, xa, B, xb) {
+    return hv(A.ay, A.ax, xa, xb, B.ay, B.by) + hv(A.by, xa, A.bx, xb, B.ay, B.by) +
+           hv(B.ay, B.ax, xb, xa, A.ay, A.by) + hv(B.by, xb, B.bx, xa, A.ay, A.by);
+  }
+
+  // 1D push-and-shove: lanes keep at least SP apart; the lane you hold never moves.
+  function relax(L) {
+    for (const w of L) w.p = clamp(w.pref, w.lo, w.hi);
+    const pairs = [];
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+      const A = L[i], B = L[j];
+      if (A.a === B.a && A.ai === B.ai) { pairs.push({ same: true, A, B }); continue; }
+      if (!(A.ylo < B.yhi + SP && B.ylo < A.yhi + SP)) continue;
+      if (A.hi + SP <= B.lo || B.hi + SP <= A.lo) continue;
+      let aLeft;
+      if (A.pin || B.pin) {
+        const P = A.pin ? A : B, O = A.pin ? B : A;
+        const oRight = (O.lane != null ? O.lane : O.p) >= P.p;
+        aLeft = P === A ? oRight : !oRight;
+      } else {
+        const m = (A.p + B.p) / 2, x1 = m - SP / 2, x2 = m + SP / 2;
+        const cl = crossCount(A, x1, B, x2), cr = crossCount(A, x2, B, x1);
+        if (cl !== cr) aLeft = cl < cr;
+        else {
+          const da = A.lane != null ? A.lane : A.p, db = B.lane != null ? B.lane : B.p;
+          aLeft = Math.abs(da - db) > 0.5 ? da < db : (A.pref !== B.pref ? A.pref < B.pref : A.idx < B.idx);
+        }
+      }
+      pairs.push(aLeft ? { L: A, R: B } : { L: B, R: A });
+    }
+    const im = w => w.pin ? 0 : (w.manual != null ? 0.15 : 1);
+    for (let it = 0; it < 32; it++) {
+      for (const pr of pairs) {
+        if (pr.same) {
+          const d = pr.B.p - pr.A.p, ma = im(pr.A), mb = im(pr.B), t = ma + mb;
+          if (!t) continue;
+          pr.A.p += d * 0.5 * ma / t; pr.B.p -= d * 0.5 * mb / t;
+        } else {
+          const gap = pr.R.p - pr.L.p;
+          if (gap >= SP) continue;
+          const ml = im(pr.L), mr = im(pr.R), t = ml + mr;
+          if (!t) continue;
+          const d = SP - gap;
+          pr.L.p -= d * ml / t; pr.R.p += d * mr / t;
+        }
+      }
+      for (const w of L) w.p = clamp(w.p, w.lo, w.hi);
+    }
+  }
+
+  // 45°: try one straight diagonal (two bends). Keep it only if it touches nothing
+  // the four-bend route would not touch; otherwise fall back to four bends.
+  function setTarget(w, P) { w.tp = P; w.tpb = P ? bboxOf(P, 0) : null; }
+  function touches(P, w, thr) {
+    const bb = bboxOf(P, thr);
+    let n = 0;
+    for (const o of wires) {
+      if (o === w || !o.tp || (o.a === w.a && o.ai === w.ai)) continue;
+      if (!bbHit(bb, o.tpb)) continue;
+      if (polyPolyDist(P, o.tp, thr) < thr) n++;
+    }
+    for (const nd of nodes) {
+      if (nd === w.a || nd === w.b) continue;
+      const r = { x0: nd.x - 3, y0: nd.y - 3, x1: nd.x + nd.w + 3, y1: nd.y + nd.h + 3 };
+      if (!bbHit(bb, r)) continue;
+      for (let i = 0; i < P.length - 1; i++) if (segRectHit(P[i], P[i + 1], r)) { n++; break; }
+    }
+    return n;
+  }
+  function decideDiag(D) {
+    for (const w of wires) {
+      if (!isTrace(w)) setTarget(w, null);
+      else if (w.kind === 'lane' && styleOf(w) === 'diag') setTarget(w, diagPath(w, w.lane, CH));
+      else setTarget(w, pathFor(w, styleOf(w)));
+    }
+    const thr = SP * 0.6;
+    D.sort((p, q) => Math.abs(p.by - p.ay) - Math.abs(q.by - q.ay));
+    for (const w of D) {
+      const h = Math.abs(w.by - w.ay) / 2;
+      w.dgt = 0; w.xt = 0;
+      if (h <= CH) { w.dgt = 1; continue; }
+      const lo = w.ax + DSTUB + h, hi = w.bx - DSTUB - h;
+      if (lo > hi) continue;
+      const baseT = touches(w.tp, w, thr);
+      const offs = [0];
+      if (!w.pin) {
+        for (let k = 1; k <= 8; k++) offs.push(k * SP, -k * SP);
+        offs.push(lo - w.lane, hi - w.lane);
+        offs.sort((p, q) => Math.abs(p) - Math.abs(q));
+      }
+      for (const off of offs) {
+        const x = w.lane + off;
+        if (x < lo - 0.01 || x > hi + 0.01) continue;
+        const P = diagPath(w, x, h);
+        if (touches(P, w, thr) <= baseT) { w.dgt = 1; w.xt = off; setTarget(w, P); break; }
+      }
+    }
+  }
+
+  function layout(dt, now) {
+    let moving = false;
+    const L = [];
+    for (const w of wires) {
+      const a = w.a, b = w.b;
+      w.ax = a.x + a.w; w.ay = a.y + outOff(a, w.ai);
+      w.bx = b.x; w.by = b.y + inOff(b, w.bi);
+      const dx = w.bx - w.ax, dy = w.by - w.ay;
+      if (w.pts) w.kind = 'manual';
+      else if (dx < 8) { w.kind = 'back'; const bc = backChannel(w); w.yb = bc.y; w.band = bc.band; }
+      else if (Math.abs(dy) < 0.5) w.kind = 'straight';
+      else w.kind = 'lane';
+      const locked = w.kind === 'straight' && a.tx == null && b.tx == null;
+      if (locked && w.locked === false) w.flash = now;
+      w.locked = locked;
+      if (w.kind !== 'lane' || !isTrace(w)) continue;
+      const fz = feasible(w);
+      w.lo = fz.lo; w.hi = fz.hi;
+      w.ylo = Math.min(w.ay, w.by); w.yhi = Math.max(w.ay, w.by);
+      const span = w.hi - w.lo;
+      w.pref = w.pin ? w.dragX : w.manual != null ? w.lo + w.manual * span : w.lo + span / 2;
+      L.push(w);
+    }
+    relax(L);
+    for (const w of L) {
+      const span = w.hi - w.lo;
+      const ft = span > 0.5 ? (w.p - w.lo) / span : 0.5;
+      w.ft = ft;
+      if (w.f == null || RM || w.pin) { w.f = ft; w.fv = 0; }
+      else {
+        const k = 300, c = 2 * Math.sqrt(k) * 0.8;
+        w.fv += (k * (ft - w.f) - c * w.fv) * dt;
+        w.f += w.fv * dt;
+        if (Math.abs(ft - w.f) < 2e-4 && Math.abs(w.fv) < 2e-3) { w.f = ft; w.fv = 0; } else moving = true;
+      }
+      w.lane = w.lo + w.f * span;
+    }
+    const D = L.filter(w => styleOf(w) === 'diag');
+    decideDiag(D);
+    for (const w of D) {
+      if (w.dg == null || RM) { w.dg = w.dgt; w.xo = w.xt; w.dgv = w.xov = 0; continue; }
+      const k = 240, c = 2 * Math.sqrt(k) * 0.85;
+      w.dgv += (k * (w.dgt - w.dg) - c * w.dgv) * dt; w.dg += w.dgv * dt;
+      w.xov += (k * (w.xt - w.xo) - c * w.xov) * dt; w.xo += w.xov * dt;
+      if (Math.abs(w.dgt - w.dg) < 1e-3 && Math.abs(w.xt - w.xo) < 0.02 && Math.abs(w.dgv) + Math.abs(w.xov) < 0.02) {
+        w.dg = w.dgt; w.xo = w.xt; w.dgv = w.xov = 0;
+      } else moving = true;
+    }
+    return moving;
+  }
+
+  // ---------- path geometry ----------
+  function dedupe(P) {
+    const out = [P[0]];
+    for (let i = 1; i < P.length; i++) {
+      const q = out[out.length - 1];
+      if (Math.abs(P[i][0] - q[0]) > 0.01 || Math.abs(P[i][1] - q[1]) > 0.01) out.push(P[i]);
+    }
+    if (out.length === 1) out.push(P[P.length - 1]);
+    return out;
+  }
+  function simplify(P) {
+    if (P.length < 3) return P;
+    const out = [P[0]];
+    for (let i = 1; i < P.length - 1; i++) {
+      const a = out[out.length - 1], b = P[i], c = P[i + 1];
+      const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+      const lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy);
+      if (lu && lv && Math.abs(ux * vy - uy * vx) / (lu * lv) < 1e-4 && ux * vx + uy * vy > 0) continue;
+      out.push(b);
+    }
+    out.push(P[P.length - 1]);
+    return out;
+  }
+  // Cut only right-angle corners; a 45° turn is already a clean trace corner.
+  function chamfer(P, c) {
+    const n = P.length;
+    if (n < 3) return P;
+    const len = i => Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]);
+    const out = [P[0]];
+    for (let i = 1; i < n - 1; i++) {
+      const A = P[i - 1], V = P[i], B = P[i + 1];
+      const la = len(i - 1), lb = len(i);
+      const ba = i - 1 === 0 ? la - 2 : la / 2, bb = i + 1 === n - 1 ? lb - 2 : lb / 2;
+      const d = Math.max(0, Math.min(c, ba, bb));
+      const square = la && lb && Math.abs((V[0] - A[0]) * (B[0] - V[0]) + (V[1] - A[1]) * (B[1] - V[1])) < 0.1 * la * lb;
+      if (d < 0.01 || !square) { out.push(V); continue; }
+      out.push([V[0] + (A[0] - V[0]) / la * d, V[1] + (A[1] - V[1]) / la * d]);
+      out.push([V[0] + (B[0] - V[0]) / lb * d, V[1] + (B[1] - V[1]) / lb * d]);
+    }
+    out.push(P[n - 1]);
+    return out;
+  }
+  function orthoPath(w) {
+    const { ax, ay, bx, by } = w;
+    if (w.kind === 'straight') return [[ax, ay], [bx, by]];
+    if (w.kind === 'lane') return [[ax, ay], [w.lane, ay], [w.lane, by], [bx, by]];
+    const x1 = ax + STUB, x2 = bx - STUB;
+    return [[ax, ay], [x1, ay], [x1, w.yb], [x2, w.yb], [x2, by], [bx, by]];
+  }
+  // A wire that runs backwards crosses over in the gap between its two nodes when one sits
+  // above the other (skipping anything parked in that gap); only otherwise does it go around.
+  function backChannel(w) {
+    const a = w.a, b = w.b;
+    const xl = w.bx - STUB - CLR, xr = w.ax + STUB + CLR;
+    let g = null;
+    if (b.y + b.h + 2 * CLR <= a.y) g = [b.y + b.h + CLR, a.y - CLR];
+    else if (a.y + a.h + 2 * CLR <= b.y) g = [a.y + a.h + CLR, b.y - CLR];
+    if (g) {
+      let free = [g];
+      for (const n of nodes) {
+        if (n === a || n === b || n.x + n.w + CLR < xl || n.x - CLR > xr) continue;
+        const p = n.y - CLR, q = n.y + n.h + CLR;
+        free = free.flatMap(([u, v]) => {
+          if (q <= u || p >= v) return [[u, v]];
+          const r = [];
+          if (p > u) r.push([u, p]);
+          if (q < v) r.push([q, v]);
+          return r;
+        });
+      }
+      let best = null;
+      for (const s of free) if (s[1] - s[0] >= 4 && (!best || s[1] - s[0] > best[1] - best[0])) best = s;
+      if (best) return { y: (best[0] + best[1]) / 2, band: best };
+    }
+    const above = Math.min(a.y, b.y) - 24, below = Math.max(a.y + a.h, b.y + b.h) + 24;
+    const cost = y => Math.abs(w.ay - y) + Math.abs(y - w.by);
+    return { y: cost(above) <= cost(below) ? above : below, band: null };
+  }
+  // In 45° mode the crossing becomes one diagonal when the gap is tall enough for it.
+  function backDiag(w) {
+    if (!w.band) return null;
+    const x1 = w.ax + STUB, x2 = w.bx - STUB, L = x1 - x2, sg = w.by < w.ay ? -1 : 1;
+    const m = CH + 2;
+    const lo = Math.max(w.band[0], Math.min(w.ay, w.by) + m), hi = Math.min(w.band[1], Math.max(w.ay, w.by) - m);
+    if (hi - lo < L) return null;
+    const mid = clamp(w.yb, lo + L / 2, hi - L / 2);
+    const yp = mid - sg * L / 2, yq = mid + sg * L / 2;
+    return [[w.ax, w.ay], [x1, w.ay], [x1, yp], [x2, yq], [x2, w.by], [w.bx, w.by]];
+  }
+  // Vertical at x with 45° cuts of size c; c = |dy|/2 collapses it into one diagonal.
+  function diagPath(w, x, c) {
+    const { ax, ay, bx, by } = w, sg = by < ay ? -1 : 1;
+    c = Math.max(0, Math.min(c, Math.abs(by - ay) / 2, x - ax - 2, bx - 2 - x));
+    return dedupe([[ax, ay], [x - c, ay], [x, ay + sg * c], [x, by - sg * c], [x + c, by], [bx, by]]);
+  }
+  function bezPath(w) {
+    const { ax, ay, bx, by } = w, dx = bx - ax, dy = by - ay;
+    const k = dx >= 0 ? Math.max(dx * 0.5, Math.min(40, Math.abs(dy) * 0.3 + 10)) : 70 + Math.min(120, -dx * 0.25) + Math.abs(dy) * 0.1;
+    const p = [], N = 36;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, u = 1 - t, b0 = u * u * u, b1 = 3 * u * u * t, b2 = 3 * u * t * t, b3 = t * t * t;
+      p.push([b0 * ax + b1 * (ax + k) + b2 * (bx - k) + b3 * bx, b0 * ay + b1 * ay + b2 * by + b3 * by]);
+    }
+    return p;
+  }
+  function pathFor(w, m) {
+    if (m === 'bezier') return bezPath(w);
+    if (w.kind === 'manual') return dedupe([[w.ax, w.ay], ...w.pts, [w.bx, w.by]]);
+    if (w.kind === 'lane' && m === 'diag') {
+      const h = Math.abs(w.by - w.ay) / 2, c0 = Math.min(CH, h), g = w.dg == null ? 0 : clamp(w.dg, 0, 1);
+      return simplify(diagPath(w, w.lane + (w.xo || 0), c0 + (h - c0) * g));
+    }
+    const P = dedupe((m === 'diag' && w.kind === 'back' && backDiag(w)) || orthoPath(w));
+    return simplify(m === 'diag' ? dedupe(chamfer(P, CH)) : P);
+  }
+  // Resample to N points by arc length, keeping every original corner.
+  function resample(P, N) {
+    const m = P.length - 1, iv = N - 1;
+    const L = [];
+    let tot = 0;
+    for (let i = 0; i < m; i++) { const l = Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]); L.push(l); tot += l; }
+    if (m < 1 || tot < 1e-6 || m > iv) return Array.from({ length: N }, () => [P[0][0], P[0][1]]);
+    const want = L.map(l => l / tot * iv);
+    const cnt = want.map(x => Math.max(1, Math.floor(x)));
+    let sum = cnt.reduce((s, x) => s + x, 0);
+    while (sum < iv) { let bi = 0, bv = -Infinity; for (let i = 0; i < m; i++) { const r = want[i] - cnt[i]; if (r > bv) { bv = r; bi = i; } } cnt[bi]++; sum++; }
+    while (sum > iv) { let bi = -1, bv = -Infinity; for (let i = 0; i < m; i++) if (cnt[i] > 1) { const r = cnt[i] - want[i]; if (r > bv) { bv = r; bi = i; } } if (bi < 0) break; cnt[bi]--; sum--; }
+    const out = [];
+    for (let i = 0; i < m; i++) for (let k = 0; k < cnt[i]; k++) {
+      const t = k / cnt[i];
+      out.push([P[i][0] + (P[i + 1][0] - P[i][0]) * t, P[i][1] + (P[i + 1][1] - P[i][1]) * t]);
+    }
+    out.push([P[m][0], P[m][1]]);
+    while (out.length < N) out.push([P[m][0], P[m][1]]);
+    out.length = N;
+    return out;
+  }
+  const easeBack = x => { const s = 1.2, u = x - 1; return 1 + (s + 1) * u * u * u + s * u * u; };
+  // Style changes morph from a snapshot of what was on screen to the live target.
+  function displayPath(w, t) {
+    const target = pathFor(w, styleOf(w));
+    if (!w.snap) return target;
+    const x = clamp((t - w.snap.t0 - w.snap.delay) / MDUR, 0, 1);
+    if (x <= 0) return w.snap.P;
+    if (x >= 1) return target;
+    const e = easeBack(x), A = w.snap.R, B = resample(target, 72);
+    return A.map((p, i) => [p[0] + (B[i][0] - p[0]) * e, p[1] + (B[i][1] - p[1]) * e]);
+  }
+  function snapshot(list, stagger) {
+    const now = performance.now();
+    if (RM) { for (const w of list) w.mend = now; lastMend = now; return; }
+    let mn = Infinity, mx = -Infinity;
+    for (const w of list) if (w.ax != null) { mn = Math.min(mn, w.ax); mx = Math.max(mx, w.ax); }
+    for (const w of list) {
+      if (!w.disp) continue;
+      const P = w.disp.map(p => [p[0], p[1]]);
+      w.snap = { P, R: resample(P, 72), t0: now, delay: stagger && mx > mn ? STAG * (w.ax - mn) / (mx - mn) : 0 };
+    }
+  }
+  function offsetPath(P, d) {
+    const n = P.length, out = [];
+    for (let i = 0; i < n; i++) {
+      let ax = 0, ay = 0, bx = 0, by = 0;
+      if (i > 0) { const dx = P[i][0] - P[i - 1][0], dy = P[i][1] - P[i - 1][1], l = Math.hypot(dx, dy) || 1; ax = dx / l; ay = dy / l; }
+      if (i < n - 1) { const dx = P[i + 1][0] - P[i][0], dy = P[i + 1][1] - P[i][1], l = Math.hypot(dx, dy) || 1; bx = dx / l; by = dy / l; }
+      if (i === 0) { ax = bx; ay = by; }
+      if (i === n - 1) { bx = ax; by = ay; }
+      let tx = ax + bx, ty = ay + by;
+      const tl = Math.hypot(tx, ty);
+      if (tl < 1e-6) { tx = bx; ty = by; } else { tx /= tl; ty /= tl; }
+      const nx = -ty, ny = tx;
+      const cos = Math.max(0.35, nx * -by + ny * bx);
+      out.push([P[i][0] + nx * d / cos, P[i][1] + ny * d / cos]);
+    }
+    return out;
+  }
+  // Where two wires leaving the same output split apart: that point gets a junction dot.
+  function diverge(A, B) {
+    for (let i = 1; i < A.length; i++) {
+      if (polyDist(A[i], B) > 0.6) {
+        const a = A[i - 1], b = A[i];
+        let lo = 0, hi = 1;
+        for (let k = 0; k < 14; k++) {
+          const m = (lo + hi) / 2;
+          if (polyDist([a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m], B) <= 0.6) lo = m; else hi = m;
+        }
+        return [a[0] + (b[0] - a[0]) * lo, a[1] + (b[1] - a[1]) * lo];
+      }
+    }
+    return null;
+  }
+  function junctions(t) {
+    const groups = new Map();
+    for (const w of wires) { const k = w.a.idx + ':' + w.ai; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(w); }
+    const dots = [];
+    for (const g of groups.values()) {
+      if (g.length < 2 || g.some(w => !isTrace(w) || w.snap)) continue;
+      const alpha = clamp((t - Math.max(...g.map(w => w.mend))) / 220, 0, 1);
+      for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++) {
+        const p = diverge(g[i].disp, g[j].disp);
+        if (!p) continue;
+        const s = g[i].disp[0];
+        if (Math.hypot(p[0] - s[0], p[1] - s[1]) < 3) continue;
+        if (!dots.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1.5)) dots.push([p[0], p[1], alpha]);
+      }
+    }
+    return dots;
+  }
+
+  // ---------- drawing ----------
+  function tracePath(P) { ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) ctx.lineTo(P[i][0], P[i][1]); }
+  function strokeWire(P, type, color, lw) {
+    ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (type === 'item') { ctx.lineWidth = lw; tracePath(P); ctx.stroke(); return; }
+    const d = lw * 0.95;
+    ctx.lineWidth = lw * 0.72;
+    if (type === 'tree') ctx.setLineDash([lw * 3.2, lw * 2.2]);
+    tracePath(offsetPath(P, d)); ctx.stroke();
+    tracePath(offsetPath(P, -d)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function shell(n, sel, fill, edge, r, ew) {
+    ctx.save();
+    ctx.shadowColor = C.shadow; ctx.shadowBlur = 8 * view.s * DPR; ctx.shadowOffsetY = 2 * view.s * DPR;
+    rr(n.x, n.y, n.w, n.h, r); ctx.fillStyle = sel ? C.selFill : fill; ctx.fill();
+    ctx.restore();
+    ctx.lineWidth = sel ? ew * 1.6 : ew; ctx.strokeStyle = sel ? C.sel : edge;
+    rr(n.x, n.y, n.w, n.h, r); ctx.stroke();
+  }
+  function grip(x, y, dir, ew, sel) {
+    ctx.beginPath();
+    if (dir < 0) ctx.arc(x, y, 3.6, Math.PI / 2, Math.PI * 1.5); else ctx.arc(x, y, 3.6, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath();
+    ctx.fillStyle = sel ? C.selFill : C.node; ctx.fill();
+    ctx.lineWidth = ew; ctx.strokeStyle = sel ? C.sel : C.edge; ctx.stroke();
+  }
+  function drawComp(n, sel, ew) {
+    shell(n, sel, C.node, C.edge, 4, ew);
+    const sx = n.x + n.iw;
+    rr(sx + 1, n.y + 3, 18, n.h - 6, 3); ctx.fillStyle = C.strip; ctx.fill();
+    ctx.fillStyle = C.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `600 11px ${F.node}`;
+    ctx.save(); ctx.translate(sx + 10, n.y + n.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(n.name, 0, 0.5); ctx.restore();
+    ctx.font = `500 11px ${F.node}`;
+    n.ins.forEach((s, i) => ctx.fillText(s, n.x + n.iw / 2 + 1, n.y + inOff(n, i) + 0.5));
+    n.outs.forEach((s, j) => ctx.fillText(s, sx + 20 + n.ow / 2 - 1, n.y + outOff(n, j) + 0.5));
+    n.ins.forEach((s, i) => grip(n.x, n.y + inOff(n, i), -1, ew, sel));
+    n.outs.forEach((s, j) => grip(n.x + n.w, n.y + outOff(n, j), 1, ew, sel));
+  }
+  const trackOf = n => ({ t0: n.x + 70, t1: n.x + n.w - 50 });
+  function drawSlider(n, sel, ew) {
+    shell(n, sel, C.node, C.edge, 3, ew);
+    const cy = n.y + n.h / 2, { t0, t1 } = trackOf(n);
+    rr(n.x + 2, n.y + 2, 60, n.h - 4, 2); ctx.fillStyle = C.strip; ctx.fill();
+    ctx.fillStyle = C.text; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = `500 11px ${F.node}`;
+    ctx.fillText(n.name, n.x + 7, cy + 0.5);
+    ctx.strokeStyle = C.track; ctx.lineWidth = ew;
+    ctx.beginPath(); ctx.moveTo(t0, cy); ctx.lineTo(t1, cy);
+    ctx.moveTo(t0, cy - 3); ctx.lineTo(t0, cy + 3); ctx.moveTo(t1, cy - 3); ctx.lineTo(t1, cy + 3); ctx.stroke();
+    const k = t0 + (n.value - n.min) / (n.max - n.min) * (t1 - t0);
+    rr(k - 3.5, n.y + 3.5, 7, n.h - 7, 1.5); ctx.fillStyle = C.edge; ctx.fill();
+    rr(t1 + 6, n.y + 3, n.x + n.w - t1 - 10, n.h - 6, 2); ctx.fillStyle = C.strip; ctx.fill();
+    ctx.fillStyle = C.text; ctx.textAlign = 'center'; ctx.font = `500 10px ${F.mono}`;
+    ctx.fillText(n.value.toFixed(n.dec), (t1 + 6 + n.x + n.w - 4) / 2, cy + 0.5);
+    grip(n.x + n.w, cy, 1, ew, sel);
+  }
+  function areaValue() {
+    const v = id => byId[id].value;
+    const sides = Math.round(v('sides')), R = v('radius'), floors = Math.round(v('floors')), fh = v('fh'), tw = v('twist');
+    const perim = sides * 2 * R * Math.sin(Math.PI / sides);
+    return perim * Math.max(0, floors - 1) * fh * Math.sqrt(1 + R * R * tw * tw);
+  }
+  const fmtNum = x => { const [i, d] = x.toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '.' + d; };
+  function drawPanel(n, sel, ew) {
+    shell(n, sel, C.panel, C.panelEdge, 2, ew);
+    ctx.fillStyle = sel ? C.text : C.panelText; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = `400 10px ${F.mono}`;
+    ctx.fillText('{0}', n.x + 8, n.y + 17);
+    ctx.fillText('0  ' + fmtNum(areaValue()), n.x + 8, n.y + 32);
+    const cy = n.y + n.h / 2;
+    grip(n.x, cy, -1, ew, sel); grip(n.x + n.w, cy, 1, ew, sel);
+  }
+  function drawNode(n, sel, ew) {
+    if (n.kind === 'slider') drawSlider(n, sel, ew);
+    else if (n.kind === 'panel') drawPanel(n, sel, ew);
+    else drawComp(n, sel, ew);
+  }
+  function drawGrid() {
+    let step = 50 * view.s;
+    while (step < 16) step *= 2;
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = ((view.ox % step) + step) % step; x < W; x += step) { const X = Math.round(x) + 0.5; ctx.moveTo(X, 0); ctx.lineTo(X, H); }
+    for (let y = ((view.oy % step) + step) % step; y < H; y += step) { const Y = Math.round(y) + 0.5; ctx.moveTo(0, Y); ctx.lineTo(W, Y); }
+    ctx.stroke();
+  }
+  function drawHandles(w, px) {
+    if (!editable(w) || !w.disp) return;
+    const P = w.disp, hs = clamp(3.6 * view.s, 3, 5) * px;
+    ctx.lineWidth = 1.3 * px; ctx.strokeStyle = C.sel;
+    for (let i = 1; i < P.length - 1; i++) {
+      ctx.beginPath(); ctx.rect(P[i][0] - hs, P[i][1] - hs, hs * 2, hs * 2);
+      ctx.fillStyle = w.pts ? C.sel : C.node; ctx.fill(); ctx.stroke();
+    }
+  }
+
+  function render(t) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+    drawGrid();
+    ctx.setTransform(DPR * view.s, 0, 0, DPR * view.s, DPR * view.ox, DPR * view.oy);
+    const px = 1 / view.s;
+    for (const w of wires) w.disp = dedupe(displayPath(w, t));
+    const lw = clamp(1.7 * view.s, 1.1, 3.4) * px;
+
+    const laneDrag = drag && drag.type === 'lane' ? drag.w : null;
+    if (laneDrag && laneDrag.kind === 'lane') {
+      ctx.fillStyle = C.channel;
+      ctx.fillRect(laneDrag.lo, laneDrag.ylo - 12, Math.max(0, laneDrag.hi - laneDrag.lo), laneDrag.yhi - laneDrag.ylo + 24);
+    }
+    const hl = selectedWires();
+    if (hoverW) hl.add(hoverW);
+    if (drag && drag.w) hl.add(drag.w);
+    const pushed = new Set();
+    if (laneDrag) for (const w of wires) if (w !== laneDrag && w.kind === 'lane' && isTrace(w) && Math.abs(w.p - clamp(w.pref, w.lo, w.hi)) > 1) pushed.add(w);
+
+    for (const w of wires) if (!hl.has(w) && !pushed.has(w)) strokeWire(w.disp, w.type, C.wire, lw);
+    ctx.globalAlpha = 0.6;
+    for (const w of pushed) strokeWire(w.disp, w.type, C.sel, lw * 1.15);
+    for (const w of wires) {
+      const age = t - w.flash;
+      if (age >= 0 && age < 700) { ctx.globalAlpha = 0.45 * (1 - age / 700); strokeWire(w.disp, 'item', C.sel, lw * 5); }
+    }
+    ctx.globalAlpha = 1;
+    for (const w of hl) strokeWire(w.disp, w.type, C.sel, lw * 1.2);
+
+    ctx.fillStyle = C.wire;
+    const r = Math.max(2.6, 2.2 * px);
+    for (const d of junctions(t)) { ctx.globalAlpha = d[2]; ctx.beginPath(); ctx.arc(d[0], d[1], r, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+
+    if (guides.length) {
+      ctx.save(); ctx.setLineDash([4 * px, 4 * px]); ctx.strokeStyle = C.sel; ctx.lineWidth = px;
+      ctx.beginPath();
+      for (const g of guides) {
+        if (g.wire) { const w = g.wire; ctx.moveTo(Math.min(w.ax, w.bx) - 40, w.ay); ctx.lineTo(Math.max(w.ax, w.bx) + 40, w.ay); continue; }
+        const [o, p] = g, dx = p[0] - o[0], dy = p[1] - o[1], l = Math.hypot(dx, dy) || 1;
+        ctx.moveTo(o[0] - dx / l * 30, o[1] - dy / l * 30); ctx.lineTo(p[0] + dx / l * 40, p[1] + dy / l * 40);
+      }
+      ctx.stroke(); ctx.restore();
+    }
+    const ew = Math.max(1.1, 0.9 * px);
+    for (const n of order) drawNode(n, selN.has(n), ew);
+
+    const hw = new Set(selW);
+    if (hoverW) hw.add(hoverW);
+    if (drag && drag.w) hw.add(drag.w);
+    for (const w of hw) drawHandles(w, px);
+
+    if (drag && drag.type === 'marquee') {
+      const x = Math.min(drag.x0, drag.x1), y = Math.min(drag.y0, drag.y1), w = Math.abs(drag.x1 - drag.x0), h = Math.abs(drag.y1 - drag.y0);
+      ctx.fillStyle = C.channel; ctx.fillRect(x, y, w, h);
+      ctx.save(); ctx.setLineDash([4 * px, 3 * px]); ctx.strokeStyle = C.sel; ctx.lineWidth = px; ctx.strokeRect(x, y, w, h); ctx.restore();
+    }
+
+    const straight = wires.filter(w => w.kind === 'straight').length;
+    if (straight !== lastCount) { lastCount = straight; countEl.textContent = `直连 ${straight} / ${wires.length}`; }
+  }
+
+  // ---------- animation loop ----------
+  function step(dt, t) {
+    let active = false;
+    if (viewAnim) {
+      const p = clamp((t - viewAnim.t0) / viewAnim.dur, 0, 1);
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      for (const k of ['s', 'ox', 'oy']) view[k] = viewAnim.from[k] + (viewAnim.to[k] - viewAnim.from[k]) * e;
+      if (p >= 1) viewAnim = null;
+      active = true;
+    }
+    for (const n of nodes) {
+      if (n.tx == null) continue;
+      active = true;
+      if (t < n.wait) continue;
+      if (RM) { n.x = n.tx; n.y = n.ty; n.tx = n.ty = null; continue; }
+      const k = 160, c = 2 * Math.sqrt(k) * 0.72;
+      n.vx += (k * (n.tx - n.x) - c * n.vx) * dt; n.vy += (k * (n.ty - n.y) - c * n.vy) * dt;
+      n.x += n.vx * dt; n.y += n.vy * dt;
+      if (Math.abs(n.tx - n.x) < 0.04 && Math.abs(n.ty - n.y) < 0.04 && Math.abs(n.vx) + Math.abs(n.vy) < 0.6) {
+        n.x = n.tx; n.y = n.ty; n.vx = n.vy = 0; n.tx = n.ty = null;
+      }
+    }
+    if (layout(dt, t)) active = true;
+    for (const w of wires) {
+      if (w.snap) {
+        active = true;
+        if (t > w.snap.t0 + w.snap.delay + MDUR) { w.snap = null; w.mend = t; lastMend = t; }
+      }
+      if (t - w.flash < 700) active = true;
+    }
+    if (t - lastMend < 260) active = true;
+    return active;
+  }
+  let running = false, last = 0;
+  function kick() { if (running) return; running = true; last = performance.now(); requestAnimationFrame(frame); }
+  function frame(t) {
+    const dt = Math.min(0.033, Math.max(0, (t - last) / 1000));
+    last = t;
+    const active = step(dt, t);
+    render(t);
+    if (active || drag) requestAnimationFrame(frame); else running = false;
+  }
+
+  // ---------- view ----------
+  function bbox(useT, list) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const n of list || nodes) {
+      const x = useT && n.tx != null ? n.tx : n.x, y = useT && n.ty != null ? n.ty : n.y;
+      x0 = Math.min(x0, x - 6); y0 = Math.min(y0, y); x1 = Math.max(x1, x + n.w + 6); y1 = Math.max(y1, y + n.h);
+    }
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 + 30 };
+  }
+  function fit(anim, useT) {
+    const b = bbox(useT), pad = Math.min(48, W * 0.05 + 12);
+    const s = clamp(Math.min((W - pad * 2) / b.w, (H - pad * 2) / b.h), 0.2, 1.3);
+    const to = { s, ox: W / 2 - (b.x + b.w / 2) * s, oy: H / 2 - (b.y + b.h / 2) * s };
+    if (!anim || RM) { Object.assign(view, to); viewAnim = null; }
+    else viewAnim = { from: { s: view.s, ox: view.ox, oy: view.oy }, to, t0: performance.now(), dur: 560 };
+    kick();
+  }
+  function zoomAt(sp, f) {
+    const s = clamp(view.s * f, 0.2, 2.5);
+    const wx = (sp.x - view.ox) / view.s, wy = (sp.y - view.oy) / view.s;
+    view.s = s; view.ox = sp.x - wx * s; view.oy = sp.y - wy * s;
+    viewAnim = null; kick();
+  }
+  function resize() {
+    W = Math.max(1, cv.clientWidth); H = Math.max(1, cv.clientHeight);
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    if (!fitted) { fit(false, false); fitted = true; }
+    kick();
+  }
+
+  // ---------- selection, styles, commands ----------
+  let toastTimer = 0;
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+  }
+  function selectedWires() {
+    const s = new Set(selW);
+    for (const w of wires) if (selN.has(w.a) || selN.has(w.b)) s.add(w);
+    return s;
+  }
+  function tidyScope() {
+    const s = new Set(selN);
+    for (const w of selW) { s.add(w.a); s.add(w.b); }
+    return s.size >= 2 ? s : null;
+  }
+  const segBtns = [...document.querySelectorAll('.seg button')];
+  function syncUI() {
+    const sw = selectedWires();
+    let cur = globalMode;
+    if (sw.size) { const st = new Set([...sw].map(styleOf)); cur = st.size === 1 ? [...st][0] : null; }
+    segBtns.forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === cur)));
+    scopeEl.textContent = sw.size ? `所选 ${sw.size} 根` : '全部';
+    scopeEl.classList.toggle('on', sw.size > 0);
+    tidyLabel.textContent = tidyScope() ? '整理所选' : '整理全部';
+    selbar.hidden = !(selN.size || selW.size);
+    selInfo.textContent = '已选 ' + [selN.size ? `${selN.size} 个电池` : '', `${sw.size} 根线`].filter(Boolean).join(' · ');
+  }
+  function clearSel() { selN.clear(); selW.clear(); syncUI(); kick(); }
+  function selectOnlyWire(w) { selN.clear(); selW.clear(); selW.add(w); syncUI(); }
+
+  function setGlobal(m, msg) {
+    if (m === globalMode) return;
+    snapshot(wires.filter(w => !w.ovr), true);
+    globalMode = m;
+    for (const w of wires) if (w.ovr === m) w.ovr = null;
+    toast(msg || MODE_MSG[m]);
+    syncUI(); kick();
+  }
+  function applyStyle(m) {
+    if (drag && drag.type === 'lane') endDrag();
+    const sel = [...selectedWires()];
+    if (!sel.length) { setGlobal(m); return; }
+    snapshot(sel.filter(w => styleOf(w) !== m), true);
+    for (const w of sel) w.ovr = m === globalMode ? null : m;
+    toast(`所选 ${sel.length} 根线 → ${NAMES[m]}，其余不变`);
+    syncUI(); kick();
+  }
+  function resetSelected() {
+    const list = [...selectedWires()];
+    if (!list.length) return;
+    const changed = list.filter(w => w.pts || w.manual != null);
+    snapshot(changed.filter(w => w.pts), false);
+    for (const w of list) { w.pts = null; w.manual = null; }
+    toast(changed.length ? `${changed.length} 根走线回到自动布线` : '所选走线已经是自动布线');
+    kick();
+  }
+
+  function tidy() {
+    if (drag) endDrag();
+    const scope = tidyScope();
+    const N = scope ? nodes.filter(n => scope.has(n)) : nodes.slice();
+    const inSet = new Set(N);
+    const E = wires.filter(w => inSet.has(w.a) && inSet.has(w.b));
+    const ins = new Map(), outs = new Map();
+    for (const n of N) { ins.set(n, []); outs.set(n, []); }
+    for (const w of E) { ins.get(w.b).push(w); outs.get(w.a).push(w); }
+    const isSrc = n => ins.get(n).length === 0;
+    const depth = new Map();
+    const visit = n => {
+      if (depth.has(n)) return depth.get(n);
+      depth.set(n, 0);
+      let d = 0;
+      for (const w of ins.get(n)) d = Math.max(d, visit(w.a) + 1);
+      depth.set(n, d);
+      return d;
+    };
+    N.forEach(visit);
+    // sliders sit in the column right before whatever they feed
+    for (const n of N) if (isSrc(n) && outs.get(n).length) depth.set(n, Math.max(0, Math.min(...outs.get(n).map(w => depth.get(w.b))) - 1));
+    const cols = [];
+    for (const n of N) { const d = depth.get(n); (cols[d] = cols[d] || []).push(n); }
+    for (let k = 0; k < cols.length; k++) cols[k] = cols[k] || [];
+    const T = new Map(N.map(n => [n, { x: 0, y: n.y }]));
+    // stack each column's sliders tightly (keeping their order) so tidy also closes the gaps
+    for (const col of cols) {
+      const src = col.filter(isSrc).sort((a, b) => a.y - b.y);
+      let y = src.length ? src[0].y : 0;
+      for (const n of src) { T.get(n).y = y; y += n.h + VG; }
+    }
+    let x = 0;
+    for (const col of cols) {
+      if (!col.length) continue;
+      const cw = Math.max(...col.map(n => n.w));
+      for (const n of col) T.get(n).x = isSrc(n) ? x + cw - n.w : x;
+      const ports = new Set();
+      for (const n of col) for (const w of outs.get(n)) ports.add(n.idx + ':' + w.ai);
+      x += cw + Math.max(64, 40 + ports.size * SP * 1.2);
+    }
+    const outY = (n, j) => T.get(n).y + outOff(n, j);
+    const inY = (n, i) => T.get(n).y + inOff(n, i);
+    const resolve = (col, want) => {
+      const items = col.map(n => ({ n, y: want.get(n) })).sort((a, b) => a.y - b.y || a.n.idx - b.n.idx);
+      let bottom = -Infinity;
+      for (const it of items) { const y = Math.max(it.y, bottom + VG); T.get(it.n).y = y; bottom = y + it.n.h; }
+    };
+    const alignInputs = () => cols.forEach(col => {
+      const want = new Map();
+      for (const n of col) {
+        let y = T.get(n).y;
+        if (!isSrc(n)) {
+          const ws = ins.get(n).slice().sort((a, b) => a.bi - b.bi);
+          const w = ws.find(v => !isSrc(v.a)) || ws[0];
+          y = outY(w.a, w.ai) - inOff(n, w.bi);
+        }
+        want.set(n, y);
+      }
+      resolve(col, want);
+    });
+    const alignSources = () => cols.forEach(col => {
+      const want = new Map();
+      for (const n of col) {
+        let y = T.get(n).y;
+        if (isSrc(n) && outs.get(n).length) { const w = outs.get(n)[0]; y = inY(w.b, w.bi) - outOff(n, w.ai); }
+        want.set(n, y);
+      }
+      resolve(col, want);
+    });
+    alignInputs(); alignSources(); alignInputs();
+
+    const cur = bbox(false, N);
+    let mx = Infinity, my = Infinity;
+    for (const p of T.values()) { mx = Math.min(mx, p.x); my = Math.min(my, p.y); }
+    const ox = Math.round((cur.x + 6 - mx) / GRID) * GRID, oy = Math.round((cur.y - my) / GRID) * GRID;
+    const now = performance.now();
+    for (const n of N) { const p = T.get(n); n.tx = p.x + ox; n.ty = p.y + oy; n.wait = now + (RM ? 0 : depth.get(n) * 45); }
+    snapshot(E.filter(w => w.pts), false);
+    for (const w of E) { w.manual = null; w.lane = null; w.pts = null; }
+    const ncol = cols.filter(c => c.length).length;
+    if (!scope) fit(true, true);
+    toast(scope ? `整理所选：${N.length} 个电池排成 ${ncol} 列，其余不动` : `整理全部：按数据流排成 ${ncol} 列，端口对齐`);
+    kick();
+  }
+  function scramble() {
+    if (drag) endDrag();
+    const now = performance.now();
+    for (const n of nodes) {
+      n.tx = Math.round((n.hx + (Math.random() - 0.5) * 80) / GRID) * GRID;
+      n.ty = Math.round((n.hy + (Math.random() - 0.5) * 80) / GRID) * GRID;
+      n.wait = now + (RM ? 0 : Math.random() * 160);
+    }
+    snapshot(wires.filter(w => w.pts), false);
+    for (const w of wires) { w.manual = null; w.lane = null; w.pts = null; }
+    fit(true, true);
+    toast('示例已打乱，按 T 整理');
+  }
+
+  // ---------- pointer ----------
+  const pointers = new Map();
+  const rel = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const toWorld = s => [(s.x - view.ox) / view.s, (s.y - view.oy) / view.s];
+  function hitNode(p) {
+    for (let i = order.length - 1; i >= 0; i--) {
+      const n = order[i];
+      if (p[0] >= n.x - 4 && p[0] <= n.x + n.w + 4 && p[1] >= n.y && p[1] <= n.y + n.h) return n;
+    }
+    return null;
+  }
+  function onTrack(n, p) { if (n.kind !== 'slider') return false; const { t0, t1 } = trackOf(n); return p[0] >= t0 - 8 && p[0] <= t1 + 8; }
+  function hitHandle(p) {
+    const r = 7 / view.s, cands = [...selW];
+    if (hoverW) cands.unshift(hoverW);
+    for (const w of cands) {
+      if (!editable(w) || !w.disp) continue;
+      const P = w.disp;
+      for (let i = 1; i < P.length - 1; i++) if (Math.abs(p[0] - P[i][0]) <= r && Math.abs(p[1] - P[i][1]) <= r) return { w, i: i - 1 };
+    }
+    return null;
+  }
+  function hitWire(p) {
+    let best = null, bd = 6 / view.s;
+    for (const w of wires) {
+      const P = w.disp;
+      if (!P) continue;
+      for (let i = 0; i < P.length - 1; i++) { const d = segDist(p, P[i], P[i + 1]); if (d < bd) { bd = d; best = { w, seg: i }; } }
+    }
+    return best;
+  }
+  // What dragging this part of a wire does: slide its lane, or move a custom segment.
+  function segAction(hit) {
+    const w = hit.w, P = w.disp;
+    if (!editable(w)) return null;
+    if (w.kind === 'lane' && hit.seg >= 1 && hit.seg <= P.length - 3) return 'lane';
+    if (w.kind === 'manual' && P.length > 2) return 'seg';
+    return null;
+  }
+  function ensureManual(w) {
+    if (w.pts) return;
+    w.pts = w.disp.slice(1, -1).map(p => [p[0], p[1]]);
+    w.manual = null; w.pin = false;
+  }
+  // Port-to-port magnet: within a few pixels, the wire snaps dead straight.
+  function magnetY(n, rawY, gset, nx) {
+    const thr = 9 / view.s;
+    let best = null;
+    for (const w of wires) {
+      if (w.pts) continue;
+      let y = null;
+      if (w.b === n && !gset.has(w.a) && w.a.x + w.a.w < nx - 8) y = w.a.y + outOff(w.a, w.ai) - inOff(n, w.bi);
+      else if (w.a === n && !gset.has(w.b) && nx + n.w < w.b.x - 8) y = w.b.y + inOff(w.b, w.bi) - outOff(n, w.ai);
+      if (y == null) continue;
+      const d = Math.abs(y - rawY);
+      if (d < thr && (!best || d < best.d)) best = { y, d, w };
+    }
+    return best;
+  }
+  // Point snap: neighbours pull the point onto 0° / 45° / 90° lines; otherwise the grid.
+  const DIRS = [[1, 0], [0, 1], [Math.SQRT1_2, Math.SQRT1_2], [Math.SQRT1_2, -Math.SQRT1_2]];
+  function snapPoint(raw, A, B, free) {
+    if (free) return { p: raw, guides: [] };
+    const thr = 8 / view.s, lines = [];
+    for (const O of [A, B]) for (const d of DIRS) {
+      const t = (raw[0] - O[0]) * d[0] + (raw[1] - O[1]) * d[1];
+      const q = [O[0] + d[0] * t, O[1] + d[1] * t];
+      const dist = Math.hypot(raw[0] - q[0], raw[1] - q[1]);
+      if (dist < thr) lines.push({ O, d, q, dist });
+    }
+    let best = null;
+    for (const la of lines) for (const lb of lines) {
+      if (la.O !== A || lb.O !== B) continue;
+      const den = la.d[0] * lb.d[1] - la.d[1] * lb.d[0];
+      if (Math.abs(den) < 1e-6) continue;
+      const t = ((lb.O[0] - la.O[0]) * lb.d[1] - (lb.O[1] - la.O[1]) * lb.d[0]) / den;
+      const X = [la.O[0] + la.d[0] * t, la.O[1] + la.d[1] * t];
+      const dist = Math.hypot(X[0] - raw[0], X[1] - raw[1]);
+      if (dist < thr * 1.5 && (!best || dist < best.dist)) best = { p: X, dist, ls: [la, lb] };
+    }
+    if (best) return { p: best.p, guides: best.ls.map(l => [l.O, best.p]) };
+    if (lines.length) { lines.sort((p, q) => p.dist - q.dist); const l = lines[0]; return { p: l.q, guides: [[l.O, l.q]] }; }
+    return { p: [Math.round(raw[0] / GRID) * GRID, Math.round(raw[1] / GRID) * GRID], guides: [] };
+  }
+  function setCursor() {
+    if (!drag) { cv.style.cursor = spaceDown ? 'grab' : 'default'; return; }
+    cv.style.cursor = { lane: 'col-resize', slider: 'ew-resize', point: 'move', seg: 'move', marquee: 'crosshair' }[drag.type] || 'grabbing';
+  }
+  function updateHover(sp) {
+    const wp = toWorld(sp);
+    let cur = 'default', hw = null;
+    const hh = hitHandle(wp);
+    if (hh) { hw = hh.w; cur = 'move'; }
+    else {
+      const n = hitNode(wp);
+      if (n) cur = onTrack(n, wp) ? 'ew-resize' : 'grab';
+      else {
+        const hit = hitWire(wp);
+        if (hit) { hw = hit.w; const act = segAction(hit); cur = act === 'lane' ? 'col-resize' : act === 'seg' ? 'move' : 'pointer'; }
+      }
+    }
+    cv.style.cursor = spaceDown ? 'grab' : cur;
+    if (hw !== hoverW) { hoverW = hw; kick(); }
+  }
+  function setSlider(n, wx) {
+    const { t0, t1 } = trackOf(n), k = Math.pow(10, n.dec);
+    n.value = Math.round((n.min + clamp((wx - t0) / (t1 - t0), 0, 1) * (n.max - n.min)) * k) / k;
+  }
+  function startNodeDrag(n, wp) {
+    const gset = new Set(selN);
+    const group = [...gset].map(m => ({ n: m, x0: m.x, y0: m.y }));
+    for (const g of group) { g.n.tx = g.n.ty = null; g.n.vx = g.n.vy = 0; }
+    const carried = wires.filter(w => w.pts && gset.has(w.a) && gset.has(w.b)).map(w => ({ w, pts: w.pts.map(p => p.slice()) }));
+    drag = { type: 'node', n, gset, group, carried, gx: n.x, gy: n.y, dx: wp[0] - n.x, dy: wp[1] - n.y, aligned: null };
+  }
+  function moveNodes(wp, free) {
+    const d = drag, n = d.n;
+    const rx = wp[0] - d.dx, ry = wp[1] - d.dy;
+    const nx = free ? rx : Math.round(rx / GRID) * GRID;
+    const m = free ? null : magnetY(n, ry, d.gset, nx);
+    const ny = m ? m.y : free ? ry : Math.round(ry / GRID) * GRID;
+    const ddx = nx - d.gx, ddy = ny - d.gy;
+    for (const g of d.group) { g.n.x = g.x0 + ddx; g.n.y = g.y0 + ddy; }
+    for (const c of d.carried) c.w.pts = c.pts.map(p => [p[0] + ddx, p[1] + ddy]);
+    if (m && m.w !== d.aligned) toast(`${wireLabel(m.w)} 已拉直`);
+    d.aligned = m ? m.w : null;
+    guides = m ? [{ wire: m.w }] : [];
+  }
+  function movePoint(wp, free) {
+    const w = drag.w, i = drag.i;
+    const A = i === 0 ? [w.ax, w.ay] : w.pts[i - 1];
+    const B = i === w.pts.length - 1 ? [w.bx, w.by] : w.pts[i + 1];
+    const r = snapPoint(wp, A, B, free);
+    w.pts[i] = r.p; guides = r.guides;
+  }
+  // Dragging a custom segment slides it sideways; its neighbours stretch to follow.
+  function moveSeg(wp, free) {
+    const w = drag.w, k = drag.seg, P0 = drag.P0;
+    let dx = wp[0] - drag.start[0], dy = wp[1] - drag.start[1];
+    if (!free) {
+      const a = P0[k], b = P0[k + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / l, ny = (b[0] - a[0]) / l;
+      let s = dx * nx + dy * ny;
+      if (Math.abs(nx) < 1e-6 || Math.abs(ny) < 1e-6) s = Math.round(s / GRID) * GRID;
+      dx = nx * s; dy = ny * s;
+    }
+    w.pts = drag.pts0.map(p => p.slice());
+    for (const j of [k - 1, k]) if (j >= 0 && j < w.pts.length) { w.pts[j][0] += dx; w.pts[j][1] += dy; }
+  }
+  function activatePending(wp) {
+    const d = drag, w = d.w;
+    if (!d.shift) selectOnlyWire(w); else { selW.add(w); syncUI(); }
+    if (d.act === 'lane') { drag = { type: 'lane', w }; w.pin = true; w.dragX = wp[0]; }
+    else if (d.act === 'point') { ensureManual(w); drag = { type: 'point', w, i: d.i }; }
+    else if (d.act === 'seg') { drag = { type: 'seg', w, seg: d.seg, start: d.wp, P0: w.disp.map(p => p.slice()), pts0: w.pts.map(p => p.slice()) }; }
+    else drag = { type: 'none', w };
+    setCursor();
+  }
+  function endDrag() {
+    if (!drag) return;
+    if (drag.type === 'lane') { const w = drag.w; w.pin = false; if (w.kind === 'lane' && w.ft != null) w.manual = w.ft; }
+    guides = []; drag = null; setCursor(); kick();
+  }
+
+  cv.addEventListener('pointerdown', e => {
+    try { cv.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+    const sp = rel(e);
+    pointers.set(e.pointerId, sp);
+    viewAnim = null;
+    if (pointers.size === 2) {
+      endDrag();
+      const [a, b] = [...pointers.values()];
+      drag = { type: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, s0: view.s, m0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, ox: view.ox, oy: view.oy };
+      return;
+    }
+    if (pointers.size > 2) return;
+    const wp = toWorld(sp);
+    if (e.button === 1 || e.button === 2 || spaceDown) { drag = { type: 'pan', sx: sp.x, sy: sp.y, ox: view.ox, oy: view.oy }; setCursor(); kick(); return; }
+    const hh = hitHandle(wp);
+    if (hh) { drag = { type: 'pending', act: 'point', w: hh.w, i: hh.i, sp, wp, shift: e.shiftKey }; kick(); return; }
+    const n = hitNode(wp);
+    if (n) {
+      if (e.shiftKey && selN.has(n)) { selN.delete(n); syncUI(); kick(); return; }
+      if (e.shiftKey) selN.add(n);
+      else if (!selN.has(n)) { selN.clear(); selW.clear(); selN.add(n); }
+      toFront(n); syncUI();
+      if (onTrack(n, wp)) { drag = { type: 'slider', n }; setSlider(n, wp[0]); }
+      else startNodeDrag(n, wp);
+      setCursor(); kick(); return;
+    }
+    const hit = hitWire(wp);
+    if (hit) { drag = { type: 'pending', act: segAction(hit), w: hit.w, seg: hit.seg, sp, wp, shift: e.shiftKey }; kick(); return; }
+    if (e.pointerType === 'touch') { drag = { type: 'pan', sx: sp.x, sy: sp.y, ox: view.ox, oy: view.oy }; return; }
+    drag = { type: 'marquee', x0: wp[0], y0: wp[1], x1: wp[0], y1: wp[1], shift: e.shiftKey };
+    setCursor(); kick();
+  });
+  cv.addEventListener('pointermove', e => {
+    const sp = rel(e);
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, sp);
+    if (!drag) { if (e.pointerType !== 'touch') updateHover(sp); return; }
+    if (drag.type === 'pinch') {
+      if (pointers.size < 2) return;
+      const [a, b] = [...pointers.values()];
+      const s = clamp(drag.s0 * Math.hypot(a.x - b.x, a.y - b.y) / drag.d0, 0.2, 2.5);
+      const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const wx = (drag.m0.x - drag.ox) / drag.s0, wy = (drag.m0.y - drag.oy) / drag.s0;
+      view.s = s; view.ox = m.x - wx * s; view.oy = m.y - wy * s;
+      kick(); return;
+    }
+    if (drag.type === 'pan') { view.ox = drag.ox + sp.x - drag.sx; view.oy = drag.oy + sp.y - drag.sy; kick(); return; }
+    const wp = toWorld(sp), free = !snapOn || e.altKey;
+    if (drag.type === 'pending') {
+      if (Math.hypot(sp.x - drag.sp.x, sp.y - drag.sp.y) < 4) return;
+      activatePending(wp);
+    }
+    if (drag.type === 'slider') setSlider(drag.n, wp[0]);
+    else if (drag.type === 'lane') drag.w.dragX = wp[0];
+    else if (drag.type === 'point') movePoint(wp, free);
+    else if (drag.type === 'seg') moveSeg(wp, free);
+    else if (drag.type === 'node') moveNodes(wp, free);
+    else if (drag.type === 'marquee') { drag.x1 = wp[0]; drag.y1 = wp[1]; }
+    kick();
+  });
+  const up = e => {
+    pointers.delete(e.pointerId);
+    if (!drag) return;
+    if (drag.type === 'pinch') { if (pointers.size < 2) drag = null; return; }
+    if (drag.type === 'pending') {
+      const w = drag.w;
+      if (drag.shift) { if (selW.has(w)) selW.delete(w); else selW.add(w); syncUI(); }
+      else selectOnlyWire(w);
+      drag = null; setCursor(); kick(); return;
+    }
+    if (drag.type === 'marquee') {
+      const d = drag;
+      const x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1), y0 = Math.min(d.y0, d.y1), y1 = Math.max(d.y0, d.y1);
+      if (!d.shift) { selN.clear(); selW.clear(); }
+      if ((x1 - x0) * view.s > 4 || (y1 - y0) * view.s > 4) {
+        for (const n of nodes) if (n.x >= x0 && n.x + n.w <= x1 && n.y >= y0 && n.y + n.h <= y1) selN.add(n);
+      }
+      syncUI();
+    }
+    endDrag();
+  };
+  cv.addEventListener('pointerup', up);
+  cv.addEventListener('pointercancel', up);
+  cv.addEventListener('pointerleave', () => { if (!drag && hoverW) { hoverW = null; kick(); } });
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('dblclick', e => {
+    const wp = toWorld(rel(e));
+    const hh = hitHandle(wp);
+    if (hh) {
+      ensureManual(hh.w); hh.w.pts.splice(hh.i, 1); selectOnlyWire(hh.w);
+      toast('已删除拐点'); kick(); return;
+    }
+    if (hitNode(wp)) return;
+    const hit = hitWire(wp);
+    if (!hit || !editable(hit.w)) return;
+    const w = hit.w;
+    ensureManual(w);
+    const P = [[w.ax, w.ay], ...w.pts, [w.bx, w.by]];
+    let k = 0, bd = Infinity;
+    for (let i = 0; i < P.length - 1; i++) { const d = segDist(wp, P[i], P[i + 1]); if (d < bd) { bd = d; k = i; } }
+    const a = P[k], b = P[k + 1], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+    const t = l2 ? clamp(((wp[0] - a[0]) * dx + (wp[1] - a[1]) * dy) / l2, 0, 1) : 0;
+    w.pts.splice(k, 0, [a[0] + dx * t, a[1] + dy * t]);
+    selectOnlyWire(w);
+    toast('已加拐点，拖动它改走线'); kick();
+  });
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const sp = rel(e);
+    const mouseWheel = e.deltaMode !== 0 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 50 && Number.isInteger(e.deltaY));
+    if (e.ctrlKey || e.metaKey) zoomAt(sp, Math.exp(-e.deltaY * 0.01));
+    else if (mouseWheel) zoomAt(sp, Math.exp(-Math.sign(e.deltaY) * 0.15));
+    else { view.ox -= e.deltaX; view.oy -= e.deltaY; viewAnim = null; kick(); }
+  }, { passive: false });
+
+  // ---------- controls ----------
+  segBtns.forEach(b => b.addEventListener('click', () => applyStyle(b.dataset.mode)));
+  const spIn = $('sp'), spOut = $('spv');
+  spIn.addEventListener('input', () => { SP = +spIn.value; spOut.value = SP; kick(); });
+  $('snap').addEventListener('change', e => { snapOn = e.target.checked; });
+  $('tidy').addEventListener('click', tidy);
+  $('scramble').addEventListener('click', scramble);
+  $('fitb').addEventListener('click', () => fit(true, false));
+  $('zin').addEventListener('click', () => zoomAt({ x: W / 2, y: H / 2 }, 1.25));
+  $('zout').addEventListener('click', () => zoomAt({ x: W / 2, y: H / 2 }, 0.8));
+  $('selreset').addEventListener('click', resetSelected);
+  $('selclear').addEventListener('click', clearSel);
+  window.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey) return;
+    const tag = e.target && e.target.tagName;
+    if (e.key === ' ') {
+      if (tag === 'BUTTON' || tag === 'INPUT') return;
+      spaceDown = true; if (!drag) cv.style.cursor = 'grab'; e.preventDefault(); return;
+    }
+    if (e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === '1') applyStyle('bezier');
+    else if (k === '2') applyStyle('ortho');
+    else if (k === '3') applyStyle('diag');
+    else if (k === 't') tidy();
+    else if (k === 'r') scramble();
+    else if (k === 'f') fit(true, false);
+    else if (k === '=' || k === '+') zoomAt({ x: W / 2, y: H / 2 }, 1.2);
+    else if (k === '-') zoomAt({ x: W / 2, y: H / 2 }, 1 / 1.2);
+    else if (k === 'escape') clearSel();
+    else if (k === 'delete' || k === 'backspace') { if (tag === 'INPUT') return; resetSelected(); }
+    else return;
+    e.preventDefault();
+  });
+  window.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; setCursor(); } });
+  window.addEventListener('blur', () => { spaceDown = false; });
+
+  function onTheme() { readTokens(); kick(); }
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  if (mq.addEventListener) mq.addEventListener('change', onTheme); else if (mq.addListener) mq.addListener(onTheme);
+  new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  readTokens();
+  new ResizeObserver(resize).observe(stage);
+  resize();
+  syncUI();
+  if (document.fonts) {
+    Promise.all([
+      document.fonts.load('600 11px "IBM Plex Sans Condensed"'),
+      document.fonts.load('500 11px "IBM Plex Sans Condensed"'),
+      document.fonts.load('500 10px "IBM Plex Mono"')
+    ]).then(kick, kick);
+  }
+  // Open on the messy native wires, then straighten them once so the effect is visible right away.
+  setTimeout(() => { if (globalMode === 'bezier' && !drag) setGlobal('diag', '45° 走线 · 按 1 / 2 / 3 切换样式'); }, 1100);
+})();
+</script>
