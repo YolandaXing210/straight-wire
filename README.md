@@ -17,7 +17,8 @@ colours. Straight Wire makes those colours transparent for that moment, routes t
 itself (`src/StraightWire.Core`, no Grasshopper dependency, unit-tested), and draws the routes
 with Grasshopper's own pens, so list, tree, empty, faint and selected wires look the way they
 always do. Routes are cached against a fingerprint of the layout, so panning, zooming and
-solving cost nothing; dragging a component re-routes every frame.
+solving cost nothing. While a component is dragged its wires are drawn as Grasshopper curves,
+and everything re-routes once when it is dropped.
 
 Wire styles live in the `.gh` file (`GH_Document.ValueTable`, key `StraightWire.v1`) along
 with a small marker component that makes Grasshopper list Straight Wire as a required plugin.
