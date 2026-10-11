@@ -48,6 +48,28 @@ USING IT
   Buttons in the canvas's bottom-left    The same three styles. Hide them from
                                          Grasshopper's canvas widget menu.
   Alt+1 / Alt+2 / Alt+3                  Curve / Orthogonal / 45° (Option on a Mac).
+  Straight Wire menu > Reset Selected Wires
+                                         Selected wires lose their hand edits.
+
+EDITING WIRES
+-------------
+
+  Hover a wire                           It highlights.
+  Click a wire                           Selects it (Shift-click adds or removes).
+                                         Click anywhere else or press Esc to clear.
+  Drag the middle of an automatic wire   Slides its lane; the others make room.
+  Drag a bend handle                     Moves that point; the wire becomes
+                                         hand-drawn. Points snap to 0/45/90-degree
+                                         lines and the grid; hold Option (Alt) to
+                                         place freely.
+  Drag a segment of a hand-drawn wire    Slides it sideways.
+  Double-click a wire                    Adds a point.
+  Double-click a handle                  Removes that point.
+  Delete or Backspace                    Selected wires go back to automatic.
+
+Every edit is one step in Grasshopper's Undo, and is saved in the file.
+While you drag a component, its wires show as Grasshopper curves; they
+re-route when you let go.
 
 Changing a style in a file stores it in that file and adds a small "Straight
 Wire" component in its top-left corner. That component tells anyone who opens

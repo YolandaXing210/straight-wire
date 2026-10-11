@@ -6,7 +6,9 @@ Windows and macOS.
 
 The interaction was designed in a browser prototype first:
 [`docs/reference/straight-wire-prototype.html`](docs/reference/straight-wire-prototype.html).
-This first release covers drawing; editing wires by hand and tidying the canvas come next.
+Wires can be edited by hand: click to select, drag a lane sideways, drag or double-click to
+add and remove bend points, Delete to reset. Every edit is one Grasshopper undo step and is
+saved in the file. Tidying the canvas comes next.
 
 ## How it works
 
@@ -35,7 +37,8 @@ With the Rhino MCP connected, send `tools/dev-reload.csx` to `execute_rhinocommo
 after each build: it unloads the previous build and loads the new one, no restart.
 `tools/dev-call.csx` calls `DevHost.Describe` / `DevHost.Run`, and `tools/verify/*.csx`
 render the fixture in `tests/fixtures/` and check settings, fallbacks and wire looks.
-Dev builds refuse to load while an installed `StraightWire.gha` is present.
+If an installed `StraightWire.gha` is loaded, the reload detaches it and the dev build takes
+over until Rhino restarts.
 
 ## Packaging
 
