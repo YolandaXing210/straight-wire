@@ -1,0 +1,61 @@
+Straight Wire — straight, circuit-board style wires for Grasshopper
+===================================================================
+
+Draws Grasshopper's wires as right-angle or 45° traces, each in its own lane,
+around components. Requires Rhino 8 (Windows or macOS).
+
+Free to use, for any purpose. Please do not redistribute it - share the
+download page instead. See LICENSE for the full terms.
+
+
+INSTALL
+-------
+
+macOS
+  1. Copy StraightWire.gha into:
+     ~/Library/Application Support/McNeel/Rhinoceros/8.0/Plug-ins/
+        Grasshopper (b45a29b1-4343-4035-989e-044e8580d9cf)/Libraries/
+
+     Quick way to open that folder: in Grasshopper, File > Special Folders >
+     Components Folder.
+
+  2. If macOS blocks it, open Terminal and run:
+     xattr -d com.apple.quarantine "<path to StraightWire.gha>"
+
+  3. Restart Rhino.
+
+Windows
+  1. RIGHT-CLICK StraightWire.gha > Properties > tick "Unblock" > OK.
+
+  2. Copy it into:
+     %APPDATA%\Grasshopper\Libraries\
+
+  3. Restart Rhino.
+
+
+USING IT
+--------
+
+  Straight Wire menu > Curve / Orthogonal / 45°
+      With nothing selected: the style of every wire in this file.
+      With components selected: only the wires touching them.
+  Straight Wire menu > Wire Spacing      Gap between neighbouring lanes.
+  Straight Wire menu > Follow Global     Selected wires go back to the file's style.
+  Straight Wire menu > Save to This File Store the styles in the .gh, so anyone with
+                                         Straight Wire sees the same wires.
+  Straight Wire menu > Make This My Default
+                                         Use this style for files with none of their own.
+  Buttons in the canvas's bottom-left    The same three styles. Hide them from
+                                         Grasshopper's canvas widget menu.
+  Alt+1 / Alt+2 / Alt+3                  Curve / Orthogonal / 45° (Option on a Mac).
+
+Changing a style in a file stores it in that file and adds a small "Straight
+Wire" component in its top-left corner. That component tells anyone who opens
+the file without the plugin what is missing.
+
+
+UNINSTALL
+---------
+
+Delete StraightWire.gha from the folder above and restart Rhino. Files keep
+working; their wires are simply drawn as curves again.

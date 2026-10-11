@@ -1,0 +1,80 @@
+Straight Wire License
+=====================
+
+Copyright (c) 2026 Yolanda Xing. All rights reserved.
+
+This license covers Straight Wire, its source code, and every build of it ("the
+Software").
+
+
+1. Free to use
+--------------
+
+You may download, install, and use the official builds of the Software free of
+charge, for any purpose, including commercial work, on as many computers as you
+like. Grasshopper definitions you build with the help of the Software are yours.
+
+
+2. Contributing
+---------------
+
+You may copy and modify the source code for the sole purpose of proposing
+changes to the official repository, https://github.com/YolandaXing210/straight-wire,
+through a pull request. You may build and run your modified copy on your own
+computers while you work on such a change. Contributions are accepted on the
+condition that the author may use them under this license.
+
+
+3. What you may not do
+----------------------
+
+Except as section 2 allows, and without the author's written permission, you
+may not:
+
+3.1 Modify, adapt, translate, or create derivative works of the Software, or
+    build another product from it or from its source code.
+
+3.2 Copy, publish, redistribute, sell, rent, or sublicense the Software or a
+    modified version of it, in whole or in part, including by bundling it with
+    other software or offering it for download anywhere. Share the official
+    download link instead.
+
+3.3 Remove or alter this license or any copyright notice in the Software.
+
+
+4. The name
+-----------
+
+"Straight Wire" is the author's name for the Software. You may not use it, or a name
+confusingly similar to it, for any other software or for a modified version of
+the Software.
+
+
+5. Ownership
+------------
+
+The Software is licensed, not sold. The author keeps all rights not expressly
+granted here.
+
+
+6. Ending the license
+---------------------
+
+This license ends automatically if you break its terms. When it ends, you must
+stop using the Software and delete every copy you have.
+
+
+7. No warranty
+--------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+
+8. Limitation of liability
+--------------------------
+
+TO THE EXTENT THE LAW ALLOWS, IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY, INCLUDING LOST DATA OR LOST WORK, ARISING
+FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
