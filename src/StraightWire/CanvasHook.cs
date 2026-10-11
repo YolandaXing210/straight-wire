@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Windows.Forms;
 using Grasshopper.GUI.Canvas;
 using StraightWire.Core;
 using StraightWire.Interop;
+using StraightWire.UI;
 
 namespace StraightWire
 {
@@ -35,6 +37,7 @@ namespace StraightWire
         Pen _faint;
         SceneRead _read;
         RouteResult _routes;
+        readonly StyleWidget _widget = new StyleWidget();
 
         CanvasHook(GH_Canvas canvas)
         {
@@ -42,6 +45,39 @@ namespace StraightWire
         }
 
         public static int Count => Hooks.Count;
+
+        public static bool HasWidget(GH_Canvas canvas) =>
+            canvas != null && canvas.Widgets.Exists(w => w is StyleWidget);
+
+        /// <summary>
+        /// Grasshopper rebuilds a canvas's widget list now and then; put ours back each time. The
+        /// event is static and fires for every canvas, so only answer for this hook's own.
+        /// </summary>
+        void OnWidgetListCreated(object sender, GH_CanvasWidgetListEventArgs e)
+        {
+            if (sender != _canvas) return;
+            _widget.Owner = _canvas;
+            e.AddWidget(_widget);
+        }
+
+        /// <summary>
+        /// Alt+1 / 2 / 3 (Option on a Mac) pick Curve / Orthogonal / 45°. A modifier keeps them clear
+        /// of Grasshopper's own keys.
+        /// </summary>
+        void OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (!e.Alt || e.Control || e.Shift) return;
+            WireStyle style;
+            switch (e.KeyCode)
+            {
+                case Keys.D1: style = WireStyle.Curve; break;
+                case Keys.D2: style = WireStyle.Orthogonal; break;
+                case Keys.D3: style = WireStyle.Diagonal; break;
+                default: return;
+            }
+            Commands.SetStyle(style);
+            e.Handled = true;
+        }
 
         public static void Attach(GH_Canvas canvas)
         {
@@ -51,6 +87,13 @@ namespace StraightWire
             canvas.CanvasPostPaintWires += hook.OnPostPaintWires;
             canvas.CanvasPaintEnd += hook.OnPaintEnd;
             canvas.Disposed += hook.OnDisposed;
+            canvas.KeyDown += hook.OnKeyDown;
+            GH_Canvas.WidgetListCreated += hook.OnWidgetListCreated;
+            if (!HasWidget(canvas))
+            {
+                hook._widget.Owner = canvas;
+                canvas.Widgets.Add(hook._widget);
+            }
             Hooks.Add(hook);
             canvas.Refresh();
         }
@@ -80,6 +123,9 @@ namespace StraightWire
             _canvas.CanvasPostPaintWires -= OnPostPaintWires;
             _canvas.CanvasPaintEnd -= OnPaintEnd;
             _canvas.Disposed -= OnDisposed;
+            _canvas.KeyDown -= OnKeyDown;
+            GH_Canvas.WidgetListCreated -= OnWidgetListCreated;
+            _canvas.Widgets.Remove(_widget);
             Hooks.Remove(this);
             if (refresh) _canvas.Refresh();
         }
