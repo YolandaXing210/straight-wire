@@ -44,7 +44,9 @@ namespace StraightWire
             if (status == SettingsStatus.TooNew)
                 Log.Once("too-new-" + key, doc.DisplayName + " was saved with a newer Straight Wire. Your defaults are used, " +
                          "and its wire styles cannot be changed until you update the plugin.");
-            return new DocState { Status = status, File = file };
+            var state = new DocState { Status = status, File = file };
+            Marker.Refresh(doc, state.Effective);
+            return state;
         }
 
         /// <summary>
@@ -61,6 +63,7 @@ namespace StraightWire
             }
             var pruned = next.Pruned(SceneReader.LiveWireIds(doc));
             doc.ValueTable.SetValue(SettingsJson.Key, SettingsJson.Serialize(pruned));
+            Marker.Ensure(doc, pruned);
             state.Status = SettingsStatus.Ok;
             state.File = pruned;
             state.Routes = null;
