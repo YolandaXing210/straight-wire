@@ -1,3 +1,8 @@
+using System.Globalization;
+using System.Linq;
+using Grasshopper;
+using Grasshopper.Kernel;
+using StraightWire.Core;
 using StraightWire.Interop;
 
 namespace StraightWire
@@ -21,5 +26,19 @@ namespace StraightWire
             Plugin.Stop();
             return "Straight Wire dev build detached.";
         }
+
+        /// <summary>A one-line summary of the document on the active canvas.</summary>
+        public static string Describe()
+        {
+            var doc = Instances.ActiveCanvas?.Document;
+            if (doc == null) return "no document on the canvas";
+            var read = SceneReader.Read(doc, SettingsFor(doc));
+            return string.Format(CultureInfo.InvariantCulture, "nodes={0} wires={1} routed={2} curve={3} hidden={4}",
+                read.Scene.Nodes.Count, read.Wires.Count, read.RoutedCount,
+                read.Wires.Count(w => w.Style == WireStyle.Curve && w.Display != GH_ParamWireDisplay.hidden),
+                read.Wires.Count(w => w.Display == GH_ParamWireDisplay.hidden));
+        }
+
+        static FileSettings SettingsFor(GH_Document doc) => new FileSettings(WireStyle.Diagonal, Routing.DefaultSpacing);
     }
 }
