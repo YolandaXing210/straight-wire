@@ -14,7 +14,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <!-- Compile against the oldest Rhino 8 we support; this sets the Yak version floor. -->
     <GrasshopperVersion Condition="'$(GrasshopperVersion)' == ''">8.0.23304.9001</GrasshopperVersion>
     <Company>Straight Wire</Company>

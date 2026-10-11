@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-0.2.1}"
 YAK="${YAK:-/Applications/Rhino 8.app/Contents/Resources/bin/yak}"
 
 echo "==> test"

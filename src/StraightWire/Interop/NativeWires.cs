@@ -39,13 +39,14 @@ namespace StraightWire.Interop
         }
 
         /// <summary>
-        /// The pen Grasshopper would use for a wire from a to b. The faint pen is one shared
-        /// instance Grasshopper keeps, so dispose a pen only when <see cref="IsShared"/> is false.
+        /// The pen Grasshopper would use for a wire from a to b. On a Mac the faint pen is one shared
+        /// instance Grasshopper keeps; on Windows it is built fresh each time like the others. Dispose
+        /// a pen only when <see cref="IsShared"/> is false.
         /// </summary>
         public static Pen Pen(GH_Painter painter, PointF a, PointF b, bool asel, bool bsel, GH_WireType type) =>
             Factory?.Invoke(painter, a, b, asel, bsel, type);
 
-        public static bool IsShared(GH_WireType type) => type == GH_WireType.faint;
+        public static bool IsShared(GH_WireType type) => type == GH_WireType.faint && FaintPenField != null;
 
         /// <summary>
         /// Grasshopper builds its faint pen once per painter, from wire_default, the first time it
@@ -73,10 +74,11 @@ namespace StraightWire.Interop
         }
 
         /// <summary>
-        /// Native faint wires are drawn with that cached pen rather than from the skin colours, so
-        /// making the colours transparent does not hide them. While we take over, the cache holds an
-        /// invisible pen instead. Returns the pen to put back, or null if the swap was not possible
-        /// (then faint wires show twice, which is the only cost). Call after <see cref="WarmFaintPen"/>.
+        /// On a Mac, native faint wires are drawn with that cached pen rather than from the skin
+        /// colours, so making the colours transparent does not hide them. While we take over, the
+        /// cache holds an invisible pen instead. Returns the pen to put back, or null if there is no
+        /// cache (Windows, where the transparent colours already hide them) or the swap failed (then
+        /// faint wires show twice, which is the only cost). Call after <see cref="WarmFaintPen"/>.
         /// </summary>
         public static Pen HideFaint(GH_Painter painter)
         {

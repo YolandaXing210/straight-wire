@@ -32,6 +32,9 @@ Windows
 
   3. Restart Rhino.
 
+  Straight Wire runs on Rhino's default .NET runtime. If you switched Rhino to
+  .NET Framework (the SetDotNetRuntime command), switch it back to NETCore.
+
 
 USING IT
 --------
