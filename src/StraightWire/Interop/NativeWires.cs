@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Reflection;
 using Grasshopper.GUI.Canvas;
 
@@ -54,5 +55,49 @@ namespace StraightWire.Interop
         /// </summary>
         public static void WarmFaintPen(GH_Painter painter) =>
             Factory?.Invoke(painter, PointF.Empty, PointF.Empty, false, false, GH_WireType.faint);
+
+        static readonly FieldInfo FaintPenField = FindFaintPenField();
+        static readonly Pen Invisible = new Pen(Color.Transparent, 1.5f);
+
+        static FieldInfo FindFaintPenField()
+        {
+            try
+            {
+                return typeof(GH_Painter).GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .FirstOrDefault(f => f.FieldType == typeof(Pen) && f.Name.Contains("GenerateWirePen_Static_Faint"));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Native faint wires are drawn with that cached pen rather than from the skin colours, so
+        /// making the colours transparent does not hide them. While we take over, the cache holds an
+        /// invisible pen instead. Returns the pen to put back, or null if the swap was not possible
+        /// (then faint wires show twice, which is the only cost). Call after <see cref="WarmFaintPen"/>.
+        /// </summary>
+        public static Pen HideFaint(GH_Painter painter)
+        {
+            if (FaintPenField == null || painter == null) return null;
+            try
+            {
+                if (!(FaintPenField.GetValue(painter) is Pen pen) || pen == Invisible) return null;
+                FaintPenField.SetValue(painter, Invisible);
+                return pen;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static void RestoreFaint(GH_Painter painter, Pen pen)
+        {
+            if (FaintPenField == null || painter == null || pen == null) return;
+            try { FaintPenField.SetValue(painter, pen); }
+            catch { }
+        }
     }
 }

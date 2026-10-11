@@ -36,11 +36,32 @@ namespace StraightWire
             var effective = state.Effective;
             var read = SceneReader.Read(doc, effective);
             return string.Format(CultureInfo.InvariantCulture,
-                "nodes={0} wires={1} routed={2} curve={3} hidden={4} settings={5} effective={6} overrides={7} writable={8}",
+                "nodes={0} wires={1} routed={2} curve={3} hidden={4} settings={5} effective={6} overrides={7} writable={8} " +
+                "canvases={9} routes={10} last-route={11:0.00}ms",
                 read.Scene.Nodes.Count, read.Wires.Count, read.RoutedCount,
                 read.Wires.Count(w => w.Style == WireStyle.Curve && w.Display != GH_ParamWireDisplay.hidden),
                 read.Wires.Count(w => w.Display == GH_ParamWireDisplay.hidden),
-                state.Status, StyleNames.Summary(effective), effective.Overrides.Count, state.CanWrite);
+                state.Status, StyleNames.Summary(effective), effective.Overrides.Count, state.CanWrite,
+                CanvasHook.Count,
+                state.Routes == null ? "none" : state.Routes.Paths.Count + " paths/" + state.Routes.Junctions.Count + " dots",
+                CanvasHook.LastRouteMilliseconds);
+        }
+
+        /// <summary>Test hooks for tools/verify. Returns what happened.</summary>
+        public static string Run(string command)
+        {
+            switch (command)
+            {
+                case "fail-next-paint":
+                    CanvasHook.ThrowOnNextRoute = true;
+                    return "the next takeover will throw";
+                case "retry":
+                    CanvasHook.ResetFailures();
+                    CanvasHook.RefreshAll();
+                    return "canvases will try again";
+                default:
+                    return "unknown command: " + command;
+            }
         }
     }
 }

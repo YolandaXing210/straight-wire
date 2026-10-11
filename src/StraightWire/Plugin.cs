@@ -27,11 +27,9 @@ namespace StraightWire
             if (!_started) return;
             _started = false;
             Instances.CanvasCreated -= OnCanvasCreated;
+            CanvasHook.DetachAll();
         }
 
-        static void OnCanvasCreated(GH_Canvas canvas)
-        {
-            // Nothing to attach yet; Task 13 adds the canvas hook.
-        }
+        static void OnCanvasCreated(GH_Canvas canvas) => Log.Guard("attach", () => CanvasHook.Attach(canvas));
     }
 }
