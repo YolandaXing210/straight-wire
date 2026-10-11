@@ -23,11 +23,18 @@ namespace StraightWire.Core
     /// One wire, from a source parameter's output grip (Start) to a target parameter's input grip
     /// (End). Wires with the same Group come from the same source parameter and may share a trunk.
     /// Curve wires are not routed; they are in the scene so junctions know their group is mixed.
+    ///
+    /// Edits: LaneFraction keeps an automatic wire's lane at that fraction of its free range;
+    /// PinX holds the lane being dragged; Points makes the wire hand-drawn through those points.
     /// </summary>
     public sealed class SceneWire
     {
-        public SceneWire(string id, string group, string sourceNode, string targetNode, Pt start, Pt end, WireStyle style)
+        public SceneWire(string id, string group, string sourceNode, string targetNode, Pt start, Pt end, WireStyle style,
+                         double? laneFraction = null, double? pinX = null, IReadOnlyList<Pt> points = null)
         {
+            LaneFraction = laneFraction;
+            PinX = pinX;
+            Points = points;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Group = group ?? throw new ArgumentNullException(nameof(group));
             SourceNode = sourceNode ?? "";
@@ -44,6 +51,11 @@ namespace StraightWire.Core
         public Pt Start { get; }
         public Pt End { get; }
         public WireStyle Style { get; }
+        public double? LaneFraction { get; }
+        public double? PinX { get; }
+
+        /// <summary>Interior points of a hand-drawn wire; null for an automatic one.</summary>
+        public IReadOnlyList<Pt> Points { get; }
     }
 
     /// <summary>
@@ -87,6 +99,11 @@ namespace StraightWire.Core
                 h.Add(w.Start);
                 h.Add(w.End);
                 h.Add((int)w.Style);
+                h.Add(w.LaneFraction ?? double.NaN);
+                h.Add(w.PinX ?? double.NaN);
+                h.Add(w.Points?.Count ?? -1);
+                if (w.Points != null)
+                    foreach (var p in w.Points) h.Add(p);
             }
             return h.Value;
         }

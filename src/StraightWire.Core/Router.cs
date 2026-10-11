@@ -34,7 +34,13 @@ namespace StraightWire.Core
                 forJunctions.Add((w.Group, w.Routed, path));
             }
             state.Replace(lanes.Select(w => new KeyValuePair<string, double>(w.Id, w.Lane)));
-            return new RouteResult(paths, Junctions.Find(forJunctions));
+            var fractions = new Dictionary<string, double>(StringComparer.Ordinal);
+            foreach (var w in lanes)
+            {
+                double span = w.Hi - w.Lo;
+                fractions[w.Id] = span > 0.5 ? (w.Lane - w.Lo) / span : 0.5;
+            }
+            return new RouteResult(paths, Junctions.Find(forJunctions), fractions);
         }
     }
 }

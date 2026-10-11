@@ -48,7 +48,7 @@ namespace StraightWire.Core
                 // Count each candidate first, and the four-bend route only as far as needed to
                 // compare: a candidate touching nothing is kept without counting the route at all.
                 int baseline = -1;
-                foreach (double off in Offsets(w.Lane, lo, hi, ctx.Sp))
+                foreach (double off in w.Wire.PinX != null ? new[] { 0.0 } : Offsets(w.Lane, lo, hi, ctx.Sp))
                 {
                     double x = w.Lane + off;
                     if (x < lo - 0.01 || x > hi + 0.01) continue;

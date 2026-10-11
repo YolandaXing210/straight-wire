@@ -18,16 +18,24 @@ namespace StraightWire.Core
 
     public sealed class RouteResult
     {
-        public RouteResult(IReadOnlyDictionary<string, Pt[]> paths, IReadOnlyList<Junction> junctions)
+        public RouteResult(IReadOnlyDictionary<string, Pt[]> paths, IReadOnlyList<Junction> junctions,
+                           IReadOnlyDictionary<string, double> laneFractions = null)
         {
             Paths = paths;
             Junctions = junctions;
+            LaneFractions = laneFractions ?? new Dictionary<string, double>(StringComparer.Ordinal);
         }
 
         /// <summary>The polyline of every routed wire, by wire id. Curve wires have no entry.</summary>
         public IReadOnlyDictionary<string, Pt[]> Paths { get; }
 
         public IReadOnlyList<Junction> Junctions { get; }
+
+        /// <summary>
+        /// For every automatic lane wire, where its lane sits in its free range (0 = left end,
+        /// 1 = right end). A finished lane drag stores this.
+        /// </summary>
+        public IReadOnlyDictionary<string, double> LaneFractions { get; }
     }
 
     /// <summary>

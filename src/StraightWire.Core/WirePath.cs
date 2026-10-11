@@ -15,6 +15,11 @@ namespace StraightWire.Core
             {
                 case WireKind.Straight:
                     return Paths.Dedupe(new[] { a, b });
+                case WireKind.Manual:
+                    var points = new List<Pt>(w.Wire.Points.Count + 2) { a };
+                    points.AddRange(w.Wire.Points);
+                    points.Add(b);
+                    return Paths.Dedupe(points);
                 case WireKind.Lane:
                     if (!diagonal) return Paths.Simplify(Paths.Dedupe(Paths.Lane(a, b, w.Lane)));
                     double h = Math.Abs(w.By - w.Ay) / 2, c0 = Math.Min(Routing.Chamfer, h);

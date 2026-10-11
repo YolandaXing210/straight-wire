@@ -25,7 +25,8 @@ namespace StraightWire.Core
                 Feasible(ctx, w, scratch);
                 w.YLo = Math.Min(w.Ay, w.By);
                 w.YHi = Math.Max(w.Ay, w.By);
-                w.Pref = w.Lo + (w.Hi - w.Lo) / 2;
+                double span = w.Hi - w.Lo;
+                w.Pref = w.Wire.PinX ?? (w.Wire.LaneFraction is double f ? w.Lo + Geo.Clamp(f, 0, 1) * span : w.Lo + span / 2);
                 lanes.Add(w);
             }
             return lanes;
@@ -75,7 +76,8 @@ namespace StraightWire.Core
                 w.Hi = hi;
                 return;
             }
-            if (w.PrevLane is double probe)
+            bool pinned = w.Wire.PinX != null;
+            if ((w.Wire.PinX ?? w.PrevLane) is double probe)
             {
                 bool found = false;
                 (double Lo, double Hi) pick = default;
@@ -91,7 +93,7 @@ namespace StraightWire.Core
                         found = true;
                     }
                 }
-                if (found && pd <= 1)
+                if (found && (pinned || pd <= 1))
                 {
                     w.Lo = pick.Lo;
                     w.Hi = pick.Hi;
@@ -136,17 +138,19 @@ namespace StraightWire.Core
                 {
                     if (pr.Same)
                     {
-                        double d = pr.B.P - pr.A.P;
-                        pr.A.P += d * 0.25;
-                        pr.B.P -= d * 0.25;
+                        double d = pr.B.P - pr.A.P, ma = Mass(pr.A), mb = Mass(pr.B), t = ma + mb;
+                        if (t == 0) continue;
+                        pr.A.P += d * 0.5 * ma / t;
+                        pr.B.P -= d * 0.5 * mb / t;
                     }
                     else
                     {
                         double gap = pr.Right.P - pr.Left.P;
                         if (gap >= sp) continue;
-                        double d = sp - gap;
-                        pr.Left.P -= d / 2;
-                        pr.Right.P += d / 2;
+                        double d = sp - gap, ml = Mass(pr.Left), mr = Mass(pr.Right), t = ml + mr;
+                        if (t == 0) continue;
+                        pr.Left.P -= d * ml / t;
+                        pr.Right.P += d * mr / t;
                     }
                 }
                 double moved = 0;
@@ -165,6 +169,12 @@ namespace StraightWire.Core
                 w.Lane = span > 0.5 ? w.P : w.Lo + span / 2;
             }
         }
+
+        /// <summary>
+        /// How readily a lane gives way: the lane being dragged not at all, a lane the user placed
+        /// (stored fraction) reluctantly, any other lane freely. The prototype's inverse masses.
+        /// </summary>
+        static double Mass(WireJob w) => w.Wire.PinX != null ? 0 : w.Wire.LaneFraction != null ? 0.15 : 1;
 
         sealed class Pair
         {
@@ -214,9 +224,19 @@ namespace StraightWire.Core
                     pairs.Add(new Pair { A = a, B = b, Same = true });
                     continue;
                 }
+                bool aLeft;
+                if (a.Wire.PinX != null || b.Wire.PinX != null)
+                {
+                    // The lane being dragged stays put; the other keeps the side it was on.
+                    WireJob pin = a.Wire.PinX != null ? a : b, other = pin == a ? b : a;
+                    bool otherRight = (other.PrevLane ?? other.P) >= pin.P;
+                    aLeft = pin == a ? otherRight : !otherRight;
+                    pairs.Add(aLeft ? new Pair { A = a, B = b, Left = a, Right = b }
+                                    : new Pair { A = a, B = b, Left = b, Right = a });
+                    continue;
+                }
                 double m = (a.P + b.P) / 2, x1 = m - sp / 2, x2 = m + sp / 2;
                 int cl = CrossCount(a, x1, b, x2), cr = CrossCount(a, x2, b, x1);
-                bool aLeft;
                 if (cl != cr) aLeft = cl < cr;
                 else
                 {

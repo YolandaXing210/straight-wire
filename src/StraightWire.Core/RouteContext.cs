@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace StraightWire.Core
 {
-    internal enum WireKind { Straight, Lane, Back }
+    internal enum WireKind { Straight, Lane, Back, Manual }
 
     /// <summary>
     /// Working state for one wire during a single Route call (the prototype's `w`). Each routing
@@ -24,7 +24,8 @@ namespace StraightWire.Core
             Bx = wire.End.X;
             By = wire.End.Y;
             double dx = Bx - Ax, dy = By - Ay;
-            Kind = dx < Routing.BackwardBelow ? WireKind.Back
+            Kind = wire.Points != null ? WireKind.Manual
+                 : dx < Routing.BackwardBelow ? WireKind.Back
                  : Math.Abs(dy) < Routing.StraightBelow ? WireKind.Straight
                  : WireKind.Lane;
         }
