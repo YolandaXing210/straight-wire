@@ -36,8 +36,14 @@ namespace StraightWire.Core
         /// <summary>Push-and-shove passes when spreading lanes.</summary>
         public const int RelaxIterations = 32;
 
-        /// <summary>Cell size of the spatial grids.</summary>
+        /// <summary>Cell size of the node grid.</summary>
         public const double GridCell = 128;
+
+        /// <summary>
+        /// Cell size of the grid of wire paths used for 45° decisions. Wires are much larger than
+        /// nodes, so larger cells mean each wire is filed in fewer cells and found fewer times over.
+        /// </summary>
+        public const double WireGridCell = 256;
 
         public const double DefaultSpacing = 10;
         public const double MinSpacing = 6;

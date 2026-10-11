@@ -14,7 +14,7 @@ namespace StraightWire.Core
     {
         public static void Decide(RouteContext ctx)
         {
-            var grid = new SpatialGrid(Routing.GridCell);
+            var grid = new SpatialGrid(Routing.WireGridCell);
             foreach (var w in ctx.Jobs)
             {
                 w.Diag = false;
@@ -45,13 +45,31 @@ namespace StraightWire.Core
                 }
                 double lo = w.Ax + Routing.DiagonalStub + h, hi = w.Bx - Routing.DiagonalStub - h;
                 if (lo > hi) continue;
-                int baseline = Touches(ctx, grid, w.Target, w, thr, wireHits, nodeHits);
+                // Count each candidate first, and the four-bend route only as far as needed to
+                // compare: a candidate touching nothing is kept without counting the route at all.
+                int baseline = -1;
                 foreach (double off in Offsets(w.Lane, lo, hi, ctx.Sp))
                 {
                     double x = w.Lane + off;
                     if (x < lo - 0.01 || x > hi + 0.01) continue;
                     var p = Paths.Diagonal(w.Ax, w.Ay, w.Bx, w.By, x, h);
-                    if (Touches(ctx, grid, p, w, thr, wireHits, nodeHits) > baseline) continue;
+                    if (baseline >= 0)
+                    {
+                        if (Touches(ctx, grid, p, w, thr, wireHits, nodeHits, baseline) > baseline) continue;
+                    }
+                    else
+                    {
+                        int touched = Touches(ctx, grid, p, w, thr, wireHits, nodeHits, int.MaxValue);
+                        if (touched > 0)
+                        {
+                            int route = Touches(ctx, grid, w.Target, w, thr, wireHits, nodeHits, touched - 1);
+                            if (route < touched)
+                            {
+                                baseline = route;   // counting ran to the end, so this is exact
+                                continue;
+                            }
+                        }
+                    }
                     w.Diag = true;
                     w.Offset = off;
                     w.Target = p;
@@ -78,20 +96,16 @@ namespace StraightWire.Core
 
         /// <summary>
         /// How many other wires (not from the same source) come within <paramref name="thr"/> of
-        /// the path, plus how many nodes (other than its own two, padded by 3) it crosses.
+        /// the path, plus how many nodes (other than its own two, padded by 3) it crosses. Counting
+        /// stops as soon as it passes <paramref name="stopAbove"/>: a candidate only needs to know
+        /// whether it touches more than the four-bend route, so the exact excess never matters.
+        /// Nodes are counted first because they are the cheaper test.
         /// </summary>
         internal static int Touches(RouteContext ctx, SpatialGrid wires, List<Pt> path, WireJob w, double thr,
-                                    List<int> wireHits, List<int> nodeHits)
+                                    List<int> wireHits, List<int> nodeHits, int stopAbove)
         {
             var bb = Geo.BBox(path, thr);
             int n = 0;
-            wires.Query(bb, wireHits);
-            foreach (int k in wireHits)
-            {
-                var o = ctx.Jobs[k];
-                if (o == w || o.Target == null || o.Group == w.Group) continue;
-                if (Geo.PolyPolyWithin(path, o.Target, thr)) n++;
-            }
             ctx.NodeGrid.Query(bb.Inflate(Routing.TouchPad), nodeHits);
             foreach (int k in nodeHits)
             {
@@ -101,9 +115,16 @@ namespace StraightWire.Core
                 for (int i = 0; i < path.Count - 1; i++)
                 {
                     if (!Geo.SegRectHit(path[i], path[i + 1], r)) continue;
-                    n++;
+                    if (++n > stopAbove) return n;
                     break;
                 }
+            }
+            wires.Query(bb, wireHits);
+            foreach (int k in wireHits)
+            {
+                var o = ctx.Jobs[k];
+                if (o == w || o.Target == null || o.Group == w.Group) continue;
+                if (Geo.PolyPolyWithin(path, o.Target, thr) && ++n > stopAbove) return n;
             }
             return n;
         }

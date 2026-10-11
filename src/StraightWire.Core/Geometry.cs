@@ -94,11 +94,23 @@ namespace StraightWire.Core
         /// </summary>
         public static bool PolyPolyWithin(IReadOnlyList<Pt> a, IReadOnlyList<Pt> b, double d)
         {
+            // A segment of a farther than d from b's whole box cannot come within d of b.
+            double bx0 = double.PositiveInfinity, by0 = double.PositiveInfinity;
+            double bx1 = double.NegativeInfinity, by1 = double.NegativeInfinity;
+            for (int j = 0; j < b.Count; j++)
+            {
+                var q = b[j];
+                if (q.X < bx0) bx0 = q.X;
+                if (q.X > bx1) bx1 = q.X;
+                if (q.Y < by0) by0 = q.Y;
+                if (q.Y > by1) by1 = q.Y;
+            }
             for (int i = 0; i < a.Count - 1; i++)
             {
                 Pt p1 = a[i], p2 = a[i + 1];
                 double ax0 = Math.Min(p1.X, p2.X) - d, ax1 = Math.Max(p1.X, p2.X) + d;
                 double ay0 = Math.Min(p1.Y, p2.Y) - d, ay1 = Math.Max(p1.Y, p2.Y) + d;
+                if (bx1 < ax0 || bx0 > ax1 || by1 < ay0 || by0 > ay1) continue;
                 for (int j = 0; j < b.Count - 1; j++)
                 {
                     Pt q1 = b[j], q2 = b[j + 1];

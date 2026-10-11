@@ -11,6 +11,9 @@ namespace StraightWire.Core
     /// </summary>
     internal static class Lanes
     {
+        /// <summary>A pass that moves no lane further than this ends the push-and-shove early.</summary>
+        const double Settled = 1e-6;
+
         /// <summary>Finds each routed lane wire's range and preferred x. Returns them in index order.</summary>
         public static List<WireJob> Prepare(RouteContext ctx)
         {
@@ -125,8 +128,10 @@ namespace StraightWire.Core
         {
             foreach (var w in lanes) w.P = Geo.Clamp(w.Pref, w.Lo, w.Hi);
             var pairs = Pairs(lanes, sp);
+            var before = new double[lanes.Count];
             for (int it = 0; it < Routing.RelaxIterations; it++)
             {
+                for (int i = 0; i < lanes.Count; i++) before[i] = lanes[i].P;
                 foreach (var pr in pairs)
                 {
                     if (pr.Same)
@@ -144,7 +149,15 @@ namespace StraightWire.Core
                         pr.Right.P += d / 2;
                     }
                 }
-                foreach (var w in lanes) w.P = Geo.Clamp(w.P, w.Lo, w.Hi);
+                double moved = 0;
+                for (int i = 0; i < lanes.Count; i++)
+                {
+                    var w = lanes[i];
+                    w.P = Geo.Clamp(w.P, w.Lo, w.Hi);
+                    moved = Math.Max(moved, Math.Abs(w.P - before[i]));
+                }
+                // Settled: further passes would move nothing visible. The prototype always ran 32.
+                if (moved < Settled) break;
             }
             foreach (var w in lanes)
             {
