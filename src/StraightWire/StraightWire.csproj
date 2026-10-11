@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetExt>.gha</TargetExt>
+    <!-- CA1416: System.Drawing annotates itself as macOS 13+; Rhino 8 requires newer than that anyway. -->
+    <!-- MSB3277: the Grasshopper package and Rhino ship different System.Windows.Forms
+         references. Rhino's wins by design (Private=false) - it is the one loaded at runtime. -->
+    <NoWarn>NU1701;NU1603;NETSDK1138;CS8632;CA1416;MSB3277</NoWarn>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+    <!-- Compile against the oldest Rhino 8 we support; this sets the Yak version floor. -->
+    <GrasshopperVersion Condition="'$(GrasshopperVersion)' == ''">8.0.23304.9001</GrasshopperVersion>
+    <Company>Straight Wire</Company>
+    <Description>Draws Grasshopper wires as straight, circuit-board style traces.</Description>
+  </PropertyGroup>
+
+  <!--
+    Grasshopper is a WinForms application. .NET 7 has no cross-platform WinForms, so we compile
+    against the System.Windows.Forms that Rhino itself ships and loads at runtime (Private=false:
+    never copy it, always use Rhino's). Override with -p:RhinoSystemDir=... if Rhino lives elsewhere.
+  -->
+  <PropertyGroup Condition="'$(RhinoSystemDir)' == '' AND $([MSBuild]::IsOSPlatform('OSX'))">
+    <RhinoSystemDir>/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Versions/A/Resources</RhinoSystemDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RhinoSystemDir)' == '' AND $([MSBuild]::IsOSPlatform('Windows'))">
+    <RhinoSystemDir>$(ProgramW6432)\Rhino 8\System</RhinoSystemDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms">
+      <HintPath>$(RhinoSystemDir)/System.Windows.Forms.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms.Primitives">
+      <HintPath>$(RhinoSystemDir)/System.Windows.Forms.Primitives.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Drawing.Common">
+      <HintPath>$(RhinoSystemDir)/System.Drawing.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grasshopper" Version="$(GrasshopperVersion)" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!-- The routing core is compiled in, so the plugin installs as one .gha. -->
+  <ItemGroup>
+    <Compile Include="../StraightWire.Core/**/*.cs"
+             Exclude="../StraightWire.Core/bin/**;../StraightWire.Core/obj/**"
+             LinkBase="Core" />
+  </ItemGroup>
+
+  <Target Name="CheckRhino" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(RhinoSystemDir)/System.Windows.Forms.dll')"
+           Text="Rhino 8 not found at '$(RhinoSystemDir)'. Pass -p:RhinoSystemDir=&lt;path to Rhino's System folder&gt;." />
+  </Target>
+
+</Project>
