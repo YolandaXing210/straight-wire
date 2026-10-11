@@ -1,6 +1,7 @@
 using Grasshopper;
 using Grasshopper.GUI.Canvas;
 using StraightWire.Interop;
+using StraightWire.UI;
 
 namespace StraightWire
 {
@@ -20,6 +21,7 @@ namespace StraightWire
             _started = true;
             Instances.CanvasCreated += OnCanvasCreated;
             if (Instances.ActiveCanvas != null) OnCanvasCreated(Instances.ActiveCanvas);
+            StyleMenu.AddWhenReady();
         }
 
         public static void Stop()
@@ -28,6 +30,7 @@ namespace StraightWire
             _started = false;
             Instances.CanvasCreated -= OnCanvasCreated;
             CanvasHook.DetachAll();
+            StyleMenu.Remove();
         }
 
         static void OnCanvasCreated(GH_Canvas canvas) => Log.Guard("attach", () => CanvasHook.Attach(canvas));

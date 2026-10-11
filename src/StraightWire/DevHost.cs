@@ -47,10 +47,15 @@ namespace StraightWire
                 CanvasHook.LastRouteMilliseconds);
         }
 
-        /// <summary>Test hooks for tools/verify. Returns what happened.</summary>
+        /// <summary>
+        /// Test hooks for tools/verify: "fail-next-paint", "retry", and the user's commands
+        /// "style:bezier|ortho|diag", "spacing:N", "follow", "save", "default".
+        /// The user's commands act on the active canvas's document and return Describe().
+        /// </summary>
         public static string Run(string command)
         {
-            switch (command)
+            string[] parts = command.Split(':');
+            switch (parts[0])
             {
                 case "fail-next-paint":
                     CanvasHook.ThrowOnNextRoute = true;
@@ -59,6 +64,21 @@ namespace StraightWire
                     CanvasHook.ResetFailures();
                     CanvasHook.RefreshAll();
                     return "canvases will try again";
+                case "style" when parts.Length == 2 && StyleNames.TryParseToken(parts[1], out var style):
+                    Commands.SetStyle(style);
+                    return Describe();
+                case "spacing" when parts.Length == 2:
+                    Commands.SetSpacing(double.Parse(parts[1], CultureInfo.InvariantCulture));
+                    return Describe();
+                case "follow":
+                    Commands.FollowGlobal();
+                    return Describe();
+                case "save":
+                    Commands.SaveToFile();
+                    return Describe();
+                case "default":
+                    Commands.MakeMyDefault();
+                    return Describe();
                 default:
                     return "unknown command: " + command;
             }
