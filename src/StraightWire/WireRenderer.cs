@@ -19,7 +19,9 @@ namespace StraightWire
         const float DotRadius = 2.6f;
         const float DotsBelowZoom = 0.5f;
 
-        public static void Draw(GH_Canvas canvas, SceneRead read, RouteResult routes)
+        const float HandlePx = 7;
+
+        public static void Draw(GH_Canvas canvas, SceneRead read, RouteResult routes, WireEditor editor)
         {
             var g = canvas.Graphics;
             var painter = canvas.Painter;
@@ -36,7 +38,9 @@ namespace StraightWire
                 var type = fancy ? GH_Painter.DetermineWireType(w.Source.VolatileData) : GH_WireType.generic;
                 if (w.Display == GH_ParamWireDisplay.faint && !selected) type = GH_WireType.faint;
 
-                if (!w.Routed || !routes.Paths.TryGetValue(w.Id, out var path))
+                Pt[] path = null;
+                if (w.Routed && editor.Live is (string liveId, Pt[] livePath) && liveId == w.Id) path = livePath;
+                if (path == null && (!w.Routed || !routes.Paths.TryGetValue(w.Id, out path)))
                 {
                     painter.DrawConnection(w.End, w.Start, GH_WireDirection.left, GH_WireDirection.right,
                                            w.TargetSelected, w.SourceSelected, type);
@@ -45,16 +49,24 @@ namespace StraightWire
 
                 Note(dots, w, type);
                 if (!Bounds(path).IntersectsWith(visible)) continue;
-                var pen = NativeWires.Pen(painter, w.Start, w.End, w.SourceSelected, w.TargetSelected, type);
+                bool picked = editor.Selected.Contains(w.Id);
+                if (picked && type == GH_WireType.faint) type = fancy ? GH_Painter.DetermineWireType(w.Source.VolatileData) : GH_WireType.generic;
+                var pen = picked ? NativeWires.Pen(painter, w.Start, w.End, true, true, type)
+                                 : NativeWires.Pen(painter, w.Start, w.End, w.SourceSelected, w.TargetSelected, type);
                 if (pen == null) continue;
+                var points = ToPoints(path);
                 try
                 {
-                    g.DrawLines(pen, ToPoints(path));
+                    g.DrawLines(pen, points);
+                    if (!picked && w.Id == editor.Hover)
+                        using (var glow = new Pen(Color.FromArgb(120, GH_Skin.wire_selected_a), pen.Width + 2) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round })
+                            g.DrawLines(glow, points);
                 }
                 finally
                 {
                     if (!NativeWires.IsShared(type)) pen.Dispose();
                 }
+                if (picked) DrawHandles(g, points, canvas.Viewport.ZoomInverse);
             }
 
             if (canvas.Viewport.Zoom < DotsBelowZoom) return;
@@ -84,6 +96,19 @@ namespace StraightWire
                            : GH_Skin.wire_default;
             look.Visible |= type != GH_WireType.faint;
             dots[group] = look;
+        }
+
+        /// <summary>Squares on every bend of a selected wire, a constant size on screen.</summary>
+        static void DrawHandles(Graphics g, PointF[] points, float zoomInverse)
+        {
+            float size = HandlePx * zoomInverse, half = size / 2;
+            using (var fill = new SolidBrush(Color.White))
+            using (var edge = new Pen(GH_Skin.wire_selected_a, zoomInverse))
+                for (int i = 1; i < points.Length - 1; i++)
+                {
+                    g.FillRectangle(fill, points[i].X - half, points[i].Y - half, size, size);
+                    g.DrawRectangle(edge, points[i].X - half, points[i].Y - half, size, size);
+                }
         }
 
         static RectangleF Bounds(Pt[] path)

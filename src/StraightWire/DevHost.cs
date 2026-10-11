@@ -46,7 +46,25 @@ namespace StraightWire
                 state.Routes == null ? "none" : state.Routes.Paths.Count + " paths/" + state.Routes.Junctions.Count + " dots"
                     + " drawn=" + (Instances.ActiveCanvas == null ? 0 : WireEditor.For(Instances.ActiveCanvas).LastRoutes?.Paths.Count ?? 0),
                 CanvasHook.LastRouteMilliseconds,
-                CanvasHook.HasWidget(Instances.ActiveCanvas) ? (UserSettings.WidgetVisible ? "shown" : "hidden") : "missing");
+                CanvasHook.HasWidget(Instances.ActiveCanvas) ? (UserSettings.WidgetVisible ? "shown" : "hidden") : "missing")
+                + " selected=" + (Instances.ActiveCanvas == null ? 0 : WireEditor.For(Instances.ActiveCanvas).Selected.Count)
+                + " lanes=" + effective.Lanes.Count + " handdrawn=" + effective.Points.Count;
+        }
+
+        /// <summary>
+        /// Every drawn route as "id|kind|x,y;x,y…", one per line; kind is lane, manual or other.
+        /// For tools/verify, which drives the editing widget with constructed mouse events.
+        /// </summary>
+        public static string Paths()
+        {
+            var canvas = Instances.ActiveCanvas;
+            if (canvas == null) return "";
+            var editor = WireEditor.For(canvas);
+            if (editor.LastRoutes == null || editor.LastRead == null) return "";
+            var manual = new System.Collections.Generic.HashSet<string>(editor.LastRead.Wires.Where(w => w.Manual).Select(w => w.Id));
+            return string.Join("\n", editor.LastRoutes.Paths.Select(kv =>
+                kv.Key + "|" + (manual.Contains(kv.Key) ? "manual" : editor.LastRoutes.LaneFractions.ContainsKey(kv.Key) ? "lane" : "other") + "|" +
+                string.Join(";", kv.Value.Select(p => p.X.ToString(CultureInfo.InvariantCulture) + "," + p.Y.ToString(CultureInfo.InvariantCulture)))));
         }
 
         /// <summary>

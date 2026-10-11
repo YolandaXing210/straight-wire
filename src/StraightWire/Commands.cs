@@ -41,7 +41,7 @@ namespace StraightWire
             if (doc == null) return new Scope(0, null, false);
             var state = DocStore.Get(doc);
             var effective = state.Effective;
-            var ids = SceneReader.WireIdsTouchingSelection(doc);
+            var ids = TargetIds(doc);
             if (ids.Count == 0) return new Scope(0, effective.Mode, state.CanWrite);
             var first = effective.StyleOf(ids[0]);
             bool same = ids.TrueForAll(id => effective.StyleOf(id) == first);
@@ -74,13 +74,60 @@ namespace StraightWire
             });
         }
 
+        /// <summary>Selected wires, plus wires with an end on a selected component: what style actions act on.</summary>
+        public static List<string> TargetIds(GH_Document doc)
+        {
+            var ids = SceneReader.WireIdsTouchingSelection(doc);
+            var canvas = Instances.ActiveCanvas;
+            if (canvas != null && canvas.Document == doc)
+            {
+                var live = SceneReader.LiveWireIds(doc);
+                foreach (string id in WireEditor.For(canvas).Selected)
+                    if (live.Contains(id) && !ids.Contains(id)) ids.Add(id);
+            }
+            return ids;
+        }
+
+        /// <summary>Keeps a wire's lane where the user dropped it (a fraction of its free range).</summary>
+        public static void SetLane(GH_Document doc, string wireId, double fraction) =>
+            Edit(doc, "Move Wire Lane", current => current.WithLane(wireId, fraction));
+
+        /// <summary>Makes a wire hand-drawn through these points; no points makes it automatic again.</summary>
+        public static void SetPoints(GH_Document doc, string wireId, IReadOnlyList<Pt> points, string undoName) =>
+            Edit(doc, undoName, current =>
+            {
+                if (!SceneReader.Anchors(doc).TryGetValue(wireId, out var at)) return null;
+                var edited = current.WithPoints(wireId, new ManualPoints(points, at.Source, at.Target));
+                return points.Count == 0 ? edited.WithoutEdits(new[] { wireId }) : edited;
+            });
+
+        public static void ResetWires(GH_Document doc, IEnumerable<string> wireIds) =>
+            Edit(doc, "Reset Wires", current => current.WithoutEdits(wireIds));
+
+        public static void ResetSelected()
+        {
+            var doc = ActiveDocument;
+            if (doc != null) ResetWires(doc, TargetIds(doc));
+        }
+
+        static void Edit(GH_Document doc, string undoName, Func<FileSettings, FileSettings> change)
+        {
+            Log.Guard(undoName, () =>
+            {
+                var next = change(DocStore.Get(doc).Effective);
+                if (next == null || !DocStore.Write(doc, next, undoName)) return;
+                CanvasHook.ResetFailures();
+                CanvasHook.RefreshAll();
+            });
+        }
+
         static void Change(string key, Func<FileSettings, List<string>, FileSettings> change)
         {
             Log.Guard(key, () =>
             {
                 var doc = ActiveDocument;
                 if (doc == null) return;
-                var next = change(DocStore.Get(doc).Effective, SceneReader.WireIdsTouchingSelection(doc));
+                var next = change(DocStore.Get(doc).Effective, TargetIds(doc));
                 if (next == null) return;
                 if (!DocStore.Write(doc, next, key)) return;
                 CanvasHook.ResetFailures();

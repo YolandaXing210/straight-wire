@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 using Grasshopper.GUI.Canvas;
@@ -42,6 +43,7 @@ namespace StraightWire
         SceneRead _read;
         RouteResult _routes;
         readonly StyleWidget _widget = new StyleWidget();
+        readonly EditWidget _editor = new EditWidget();
 
         CanvasHook(GH_Canvas canvas)
         {
@@ -49,6 +51,31 @@ namespace StraightWire
         }
 
         public static int Count => Hooks.Count;
+
+        /// <summary>Delete or Backspace resets the selected wires; Esc clears the wire selection.</summary>
+        void EditKeys(KeyEventArgs e)
+        {
+            var editor = WireEditor.For(_canvas);
+            if (editor.Selected.Count == 0 || e.Alt || e.Control) return;
+            if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back)
+            {
+                var doc = _canvas.Document;
+                if (doc != null) Commands.ResetWires(doc, editor.Selected.ToList());
+                e.Handled = true;
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                editor.Selected.Clear();
+                _canvas.Invalidate();
+                e.Handled = true;
+            }
+        }
+
+        void OnMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.None) return;
+            Log.Guard("edit-hover", () => _editor.Hover(_canvas, _canvas.Viewport.UnprojectPoint(new PointF(e.X, e.Y))));
+        }
 
         public static bool HasWidget(GH_Canvas canvas) =>
             canvas != null && canvas.Widgets.Exists(w => w is StyleWidget);
@@ -62,6 +89,8 @@ namespace StraightWire
             if (sender != _canvas) return;
             _widget.Owner = _canvas;
             e.AddWidget(_widget);
+            _editor.Owner = _canvas;
+            e.AddWidget(_editor);
         }
 
         /// <summary>
@@ -70,7 +99,8 @@ namespace StraightWire
         /// </summary>
         void OnKeyDown(object sender, KeyEventArgs e)
         {
-            if (!e.Alt || e.Control || e.Shift) return;
+            Log.Guard("edit-keys", () => EditKeys(e));
+            if (e.Handled || !e.Alt || e.Control || e.Shift) return;
             WireStyle style;
             switch (e.KeyCode)
             {
@@ -92,12 +122,15 @@ namespace StraightWire
             canvas.CanvasPaintEnd += hook.OnPaintEnd;
             canvas.Disposed += hook.OnDisposed;
             canvas.KeyDown += hook.OnKeyDown;
+            canvas.MouseMove += hook.OnMouseMove;
             GH_Canvas.WidgetListCreated += hook.OnWidgetListCreated;
             if (!HasWidget(canvas))
             {
                 hook._widget.Owner = canvas;
                 canvas.Widgets.Add(hook._widget);
             }
+            hook._editor.Owner = canvas;
+            canvas.Widgets.Add(hook._editor);
             Hooks.Add(hook);
             canvas.Refresh();
         }
@@ -128,8 +161,10 @@ namespace StraightWire
             _canvas.CanvasPaintEnd -= OnPaintEnd;
             _canvas.Disposed -= OnDisposed;
             _canvas.KeyDown -= OnKeyDown;
+            _canvas.MouseMove -= OnMouseMove;
             GH_Canvas.WidgetListCreated -= OnWidgetListCreated;
             _canvas.Widgets.Remove(_widget);
+            _canvas.Widgets.Remove(_editor);
             Hooks.Remove(this);
             if (refresh) _canvas.Refresh();
         }
@@ -189,7 +224,7 @@ namespace StraightWire
             Restore();
             try
             {
-                WireRenderer.Draw(canvas, _read, _routes);
+                WireRenderer.Draw(canvas, _read, _routes, WireEditor.For(canvas));
             }
             catch (Exception ex)
             {

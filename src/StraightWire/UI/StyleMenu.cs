@@ -89,6 +89,13 @@ namespace StraightWire.UI
             mine.Click += (o, e) => Commands.MakeMyDefault();
             menu.DropDownItems.Add(mine);
 
+            var reset = new ToolStripMenuItem("Reset Selected Wires")
+            {
+                ToolTipText = "Selected wires (and wires on selected components) lose their hand edits and route automatically again.",
+            };
+            reset.Click += (o, e) => Commands.ResetSelected();
+            menu.DropDownItems.Insert(menu.DropDownItems.IndexOf(follow) + 1, reset);
+
             menu.DropDownOpening += (o, e) => Log.Guard("menu-open", () =>
             {
                 var doc = Commands.ActiveDocument;
@@ -108,6 +115,7 @@ namespace StraightWire.UI
                 follow.Enabled = scope.CanWrite && scope.SelectedWires > 0;
                 save.Enabled = scope.CanWrite;
                 mine.Enabled = doc != null;
+                reset.Enabled = scope.CanWrite && scope.SelectedWires > 0;
             });
 
             return menu;
