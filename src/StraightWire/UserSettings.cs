@@ -10,7 +10,7 @@ namespace StraightWire
     /// </summary>
     internal static class UserSettings
     {
-        const string ModeKey = "DefaultMode", SpacingKey = "DefaultSpacing", WidgetKey = "WidgetVisible", EditingKey = "EditingEnabled";
+        const string ModeKey = "DefaultMode", SpacingKey = "DefaultSpacing", WidgetKey = "WidgetVisible";
 
         static GH_SettingsServer _server;
 
@@ -34,17 +34,6 @@ namespace StraightWire
                 catch { return Routing.DefaultSpacing; }
             }
             set => Write(() => Server.SetValue(SpacingKey, SettingsJson.ClampSpacing(value)));
-        }
-
-        /// <summary>Whether wires can be edited with the mouse (the editing widget is shown).</summary>
-        public static bool EditingEnabled
-        {
-            get
-            {
-                try { return Server.GetValue(EditingKey, true); }
-                catch { return true; }
-            }
-            set => Write(() => Server.SetValue(EditingKey, value));
         }
 
         public static bool WidgetVisible

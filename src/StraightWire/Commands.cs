@@ -79,7 +79,7 @@ namespace StraightWire
         {
             var ids = SceneReader.WireIdsTouchingSelection(doc);
             var canvas = Instances.ActiveCanvas;
-            if (canvas != null && canvas.Document == doc)
+            if (WireEditMode.Enabled && canvas != null && canvas.Document == doc)
             {
                 var live = SceneReader.LiveWireIds(doc);
                 foreach (string id in WireEditor.For(canvas).Selected)

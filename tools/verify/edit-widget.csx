@@ -13,7 +13,7 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 
-string Repo = "/Users/yolandaxing/Documents/GitHub/straight-wire";
+string Repo = "/Users/lehands/Documents/GitHub/straight-wire";
 object Dev(string method, params object[] args)
 {
     var asm = (AppDomain.CurrentDomain.GetData("StraightWire.DevContext") as AssemblyLoadContext)?
@@ -24,6 +24,7 @@ object Dev(string method, params object[] args)
 string Field(string name) => ((string)Dev("Describe")).Split(' ').FirstOrDefault(x => x.StartsWith(name + "=")) ?? name + "=?";
 var canvas = Instances.ActiveCanvas;
 var original = canvas.Document;
+bool editingWasOn = ((string)Dev("Describe")).Contains("edit-mode=on");
 var widget = canvas.Widgets.First(w => w.GetType().Name == "EditWidget");
 GH_Document doc = null;
 
@@ -52,6 +53,7 @@ PointF Add(PointF a, float dx, float dy) => new PointF(a.X + dx, a.Y + dy);
 
 try
 {
+    Dev("Run", "edit-mode:on");
     var io = new GH_DocumentIO();
     io.Open(Repo + "/tests/fixtures/twisted-tower.gh");
     doc = io.Document;
@@ -111,6 +113,8 @@ try
 }
 finally
 {
+    Dev("Run", "edit-mode:off");
     canvas.Document = original;
+    Dev("Run", editingWasOn ? "edit-mode:on" : "edit-mode:off");
     canvas.Refresh();
 }

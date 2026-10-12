@@ -60,6 +60,18 @@ namespace StraightWire.UI
             }
             menu.DropDownItems.Add(new ToolStripSeparator());
 
+            var editMode = new ToolStripMenuItem("Wire Edit Mode")
+            {
+                Checked = WireEditMode.Enabled,
+                ToolTipText = "Edit wires and bend points. Off leaves mouse interactions to Grasshopper.",
+            };
+            editMode.Click += (o, e) =>
+            {
+                WireEditMode.Enabled = !WireEditMode.Enabled;
+                editMode.Checked = WireEditMode.Enabled;
+            };
+            menu.DropDownItems.Add(editMode);
+
             var spacing = new ToolStripMenuItem("Wire Spacing");
             foreach (double option in Routing.SpacingOptions)
             {
@@ -98,6 +110,7 @@ namespace StraightWire.UI
 
             menu.DropDownOpening += (o, e) => Log.Guard("menu-open", () =>
             {
+                editMode.Checked = WireEditMode.Enabled;
                 var doc = Commands.ActiveDocument;
                 var scope = Commands.ScopeOf(doc);
                 var effective = doc == null ? null : DocStore.Get(doc).Effective;

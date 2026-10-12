@@ -42,6 +42,8 @@ USING IT
   Straight Wire menu > Curve / Orthogonal / 45°
       With nothing selected: the style of every wire in this file.
       With components selected: only the wires touching them.
+  Straight Wire menu > Wire Edit Mode   Toggle mouse editing; OFF at each startup.
+                                         Session-only; shared by all canvases.
   Straight Wire menu > Wire Spacing      Gap between neighbouring lanes.
   Straight Wire menu > Follow Global     Selected wires go back to the file's style.
   Straight Wire menu > Save to This File Store the styles in the .gh, so anyone with
@@ -56,6 +58,14 @@ USING IT
 
 EDITING WIRES
 -------------
+
+  First enable Straight Wire > Wire Edit Mode. Turning it OFF clears temporary
+  selection and cancels an unfinished drag, preserving saved points and styles.
+  OFF double-clicks insert native Relays on visible wires, including edited routes.
+  Overlapping connections show a selection menu; cancel makes no changes.
+  An invisible superseded Curve opens search instead of inserting a Relay.
+  Single-click, hover and drag remain passive while OFF. Components and grips
+  retain native interactions. Inserting a Relay is one Undo/Redo step.
 
   Hover a wire                           It highlights.
   Click a wire                           Selects it (Shift-click adds or removes).
@@ -84,3 +94,13 @@ UNINSTALL
 
 Delete StraightWire.gha from the folder above and restart Rhino. Files keep
 working; their wires are simply drawn as curves again.
+
+SAFE UPDATE / ROLLBACK
+----------------------
+
+  Confirm the currently loaded plugin location before replacing files; development
+  builds loaded from memory may have no installation path. Save work and quit Rhino.
+  Move the old .gha to a backup folder outside Grasshopper Libraries, then copy the
+  new .gha into the original location and restart Rhino. Avoid duplicate copies.
+  To roll back, quit Rhino, remove the new .gha and restore the backup.
+  Building this repository does not install or overwrite a loaded plugin.

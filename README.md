@@ -6,9 +6,15 @@ Windows and macOS.
 
 The interaction was designed in a browser prototype first:
 [`docs/reference/straight-wire-prototype.html`](docs/reference/straight-wire-prototype.html).
-Wires can be edited by hand: click to select, drag a lane sideways, drag or double-click to
+Enable **Straight Wire > Wire Edit Mode** to edit wires by hand: click to select, drag a lane sideways, drag or double-click to
 add and remove bend points, Delete to reset. Every edit is one Grasshopper undo step and is
-saved in the file. Tidying the canvas comes next.
+saved in the file. Wire Edit Mode starts OFF for each plugin session and is never saved.
+When OFF, saved routes still render, but custom hover, selection, handles and editing keys
+are inactive. Switching OFF cancels uncommitted drags without deleting saved edits.
+When OFF, double-clicking a visible wire inserts a native Grasshopper Relay. If several
+connections overlap within the hit tolerance, choose the intended connection from the menu.
+Double-clicking only an invisible, superseded curve opens search instead of inserting a Relay.
+Components and parameter grips retain their native gestures. Tidying the canvas comes next.
 
 ## How it works
 
@@ -46,3 +52,22 @@ over until Rhino restarts.
 `./package.sh` writes `dist/straightwire-<version>-rh8_0-any.yak` and
 `dist/StraightWire-<version>.zip`. Publishing to the Package Manager (`yak login`, then
 `yak push`) is public and one-way, so it is deliberately not part of the script.
+
+## Wire Edit Mode verification
+
+`tools/verify/wire-edit-mode.csx` checks the Release build in Rhino on isolated canvases,
+without replacing the active plugin or document. It covers event bypass, session state,
+menu toggling, cancellation, multiple canvases and saved-data preservation. Real mouse
+Relay insertion still requires manual testing. See `docs/wire-edit-mode-verification.md`.
+
+## Visible-wire Relay insertion
+
+The Relay bridge uses completed paint paths, a six-screen-pixel hit tolerance, and public
+Grasshopper widget/document APIs. It replaces only the chosen source/recipient connection,
+keeps source order, and records graph and wire-setting changes in one Undo step. Existing
+hand edits are split between the new connections; an edited lane becomes two manual route
+pieces. Relay grips can change the immediate geometry around the insertion point.
+
+`tools/verify/relay-insertion.csx` tests isolated documents without replacing the installed
+plugin. See `docs/relay-insertion-verification.md` for results, remaining manual checks and
+safe installation instructions.
