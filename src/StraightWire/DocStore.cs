@@ -75,11 +75,26 @@ namespace StraightWire
         }
 
         /// <summary>
-        /// Stores settings in the document (dropping overrides for wires that are gone) and marks it
-        /// modified. Returns false, changing nothing, when the file belongs to a newer plugin.
+        /// Stores settings in the document (dropping overrides for wires that are gone), marks it
+        /// modified, and pushes an undo step named undoName (none when it is null). Returns false,
+        /// changing nothing, when the file belongs to a newer plugin.
         /// </summary>
         public static bool Write(GH_Document doc, FileSettings next, string undoName)
         {
+            if (!Store(doc, next, out var undo)) return false;
+            if (undoName != null && undo != null) doc.UndoServer.PushUndoRecord(undoName, undo);
+            return true;
+        }
+
+        /// <summary>
+        /// Write without the undo step: returns the action instead (null when nothing changed or the
+        /// file can't be written), for a caller that puts it into an undo record of its own.
+        /// </summary>
+        public static SettingsUndo WriteUnrecorded(GH_Document doc, FileSettings next) => Store(doc, next, out var undo) ? undo : null;
+
+        static bool Store(GH_Document doc, FileSettings next, out SettingsUndo undo)
+        {
+            undo = null;
             var state = Get(doc);
             if (!state.CanWrite)
             {
@@ -89,7 +104,7 @@ namespace StraightWire
             var pruned = next.Pruned(SceneReader.LiveWireIds(doc));
             string before = doc.ValueTable.GetValue(SettingsJson.Key, null), after = SettingsJson.Serialize(pruned);
             doc.ValueTable.SetValue(SettingsJson.Key, after);
-            if (undoName != null && before != after) doc.UndoServer.PushUndoRecord(undoName, new SettingsUndo(before, after));
+            if (before != after) undo = new SettingsUndo(before, after);
             Marker.Ensure(doc, pruned);
             state.Status = SettingsStatus.Ok;
             state.File = pruned;
