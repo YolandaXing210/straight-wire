@@ -118,7 +118,8 @@ The result is a new top-left for every moved block; a block whose position doesn
 
 ### 4.6 Wire edits
 
-- **Both ends moved:** lane positions and hand-drawn points of wires whose source and target objects both moved are cleared. These wires go back to automatic, as in the prototype.
+- **Ends in two different moved blocks:** lane positions and hand-drawn points are cleared. These wires go back to automatic, as in the prototype.
+- **Both ends in the same moved block** (a wire inside a group block): kept. The block moves rigidly, so settling shifts the points with it on the next paint.
 - **One end moved:** hand-drawn wires keep phase 2's rule. Their points stay, the end segment stretches, and settling updates their anchors on the next paint.
 
 ### 4.7 Undo
