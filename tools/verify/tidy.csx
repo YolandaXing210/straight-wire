@@ -1,6 +1,7 @@
-// Phase 3, task 3: Tidy All on the fixture with a group block (a hand-drawn wire inside it) and a
-// lane edit between loose components; then Undo, Redo, a second tidy, a tidy during a drag, and
-// Tidy Selected. Renders the tidied fixture to artifacts/verify/tidy.png.
+// Phase 3, task 3: Tidy All on the fixture at spacing 8 (fractional column gaps) with a group
+// block (a slider and the component it feeds, a hand-drawn wire between them) and a lane edit
+// between loose components; then Undo, Redo, a second tidy, a tidy during a drag, and Tidy
+// Selected. Renders the tidied fixture to artifacts/verify/tidy.png.
 #r "/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugIns/GrasshopperPlugin.rhp/Grasshopper.dll"
 #r "/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugIns/GrasshopperPlugin.rhp/GH_IO.dll"
 using System.Drawing;
@@ -36,7 +37,7 @@ GH_Document Open()
     var io = new GH_DocumentIO();
     io.Open(Repo + "/tests/fixtures/twisted-tower.gh");
     var d = io.Document;
-    d.ValueTable.SetValue("StraightWire.v1", "{\"v\":1,\"mode\":\"diag\",\"spacing\":10,\"wires\":{}}");
+    d.ValueTable.SetValue("StraightWire.v1", "{\"v\":1,\"mode\":\"diag\",\"spacing\":8,\"wires\":{}}");
     canvas.Document = d;
     d.Enabled = true;
     d.NewSolution(false);
@@ -70,8 +71,11 @@ try
     doc = Open();
     Paint();
 
-    // A group around two linked components, with a hand-drawn wire inside it.
-    var inner = Connections().First(c => Top(c.S) is IGH_Component && Top(c.T) is IGH_Component && Top(c.S) != Top(c.T));
+    // A group around a slider and the component it feeds (a fractional pivot next to a whole one),
+    // with a hand-drawn wire inside it.
+    var inner = Connections().FirstOrDefault(c => Top(c.S) is GH_NumberSlider && Top(c.T) is IGH_Component);
+    if (inner.S == null) inner = Connections().First(c => Top(c.S) is IGH_Component && Top(c.T) is IGH_Component && Top(c.S) != Top(c.T));
+    output.AppendLine($"group: {Top(inner.S).GetType().Name} at {Top(inner.S).Attributes.Pivot} + {Top(inner.T).GetType().Name}");
     IGH_DocumentObject ga = Top(inner.S), gb = Top(inner.T);
     var group = new GH_Group();
     group.CreateAttributes();
