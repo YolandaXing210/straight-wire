@@ -5,6 +5,8 @@ using System.Linq;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Undo;
+using Grasshopper.Kernel.Undo.Actions;
 using StraightWire.Core;
 
 namespace StraightWire
@@ -73,9 +75,16 @@ namespace StraightWire
             var reset = TidyScope.WiresToReset(read.Plan, moved.Keys, read.Wires)
                                  .Where(id => effective.Lanes.ContainsKey(id) || effective.Points.ContainsKey(id)).ToList();
 
-            // Settings first, so the next paint's settling already sees the cleared edits.
+            // Pivot actions record where everything is, before anything changes. The settings are
+            // written next, before anything moves, so the next paint's settling already sees the
+            // cleared edits. The record holds them in that order too: Undo runs last to first, so
+            // objects go back before the settings do, and the paint the settings trigger finds
+            // nothing to settle. Redo replays the tidy's own order.
+            var pivots = moves.Select(m => new GH_PivotAction(m.Obj)).ToList();
             var settingsUndo = reset.Count > 0 ? DocStore.WriteUnrecorded(doc, effective.WithoutEdits(reset)) : null;
-            var record = doc.UndoUtil.CreatePivotEvent("Tidy", moves.Select(m => m.Obj).ToList());
+            var record = new GH_UndoRecord("Tidy");
+            if (settingsUndo != null) record.AddAction(settingsUndo);
+            foreach (var pivot in pivots) record.AddAction(pivot);
             try
             {
                 foreach (var (obj, delta, pivot) in moves)
@@ -95,7 +104,6 @@ namespace StraightWire
                 settingsUndo?.Revert(doc);
                 throw;
             }
-            if (settingsUndo != null) record.AddAction(settingsUndo);
             doc.UndoServer.PushUndoRecord(record);
             doc.Modified();
             CanvasHook.ResetFailures();
