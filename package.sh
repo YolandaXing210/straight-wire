@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${VERSION:-0.2.1}"
+VERSION="${VERSION:-0.3.0}"
 YAK="${YAK:-/Applications/Rhino 8.app/Contents/Resources/bin/yak}"
 
 echo "==> test"
@@ -33,7 +33,8 @@ description: >
   angles or at 45 degrees, each in its own lane and around components, and wires from
   the same output share a trunk. Switch styles for all wires or just the selected ones
   from the Straight Wire menu or the switch in the canvas corner. Styles are saved in
-  the .gh file, so anyone with Straight Wire sees the same wires.
+  the .gh file, so anyone with Straight Wire sees the same wires. Wires can be reshaped by
+  hand, and Tidy lays a definition out in columns along the data flow with straight wires.
 keywords:
   - grasshopper
   - canvas

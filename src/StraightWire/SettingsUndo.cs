@@ -24,6 +24,9 @@ namespace StraightWire
 
         protected override void Internal_Redo(GH_Document doc) => Apply(doc, _after);
 
+        /// <summary>Puts the settings from before back without going through the undo server (a failed tidy).</summary>
+        internal void Revert(GH_Document doc) => Apply(doc, _before);
+
         static void Apply(GH_Document doc, string json)
         {
             Log.Guard("undo", () =>

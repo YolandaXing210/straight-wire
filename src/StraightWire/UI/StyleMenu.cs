@@ -108,6 +108,14 @@ namespace StraightWire.UI
             reset.Click += (o, e) => Commands.ResetSelected();
             menu.DropDownItems.Insert(menu.DropDownItems.IndexOf(follow) + 1, reset);
 
+            var tidy = new ToolStripMenuItem("Tidy All")
+            {
+                ToolTipText = "Lay components out in columns along the data flow, with straight wires. Groups move as one block. Alt+T (Option+T on a Mac).",
+            };
+            tidy.Click += (o, e) => Commands.Tidy();
+            menu.DropDownItems.Insert(menu.DropDownItems.IndexOf(reset) + 1, new ToolStripSeparator());
+            menu.DropDownItems.Insert(menu.DropDownItems.IndexOf(reset) + 2, tidy);
+
             menu.DropDownOpening += (o, e) => Log.Guard("menu-open", () =>
             {
                 editMode.Checked = WireEditMode.Enabled;
@@ -129,6 +137,8 @@ namespace StraightWire.UI
                 save.Enabled = scope.CanWrite;
                 mine.Enabled = doc != null;
                 reset.Enabled = scope.CanWrite && scope.SelectedWires > 0;
+                tidy.Text = Tidier.Label(Instances.ActiveCanvas);
+                tidy.Enabled = doc != null;
             });
 
             return menu;

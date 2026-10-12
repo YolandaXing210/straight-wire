@@ -14,7 +14,13 @@ are inactive. Switching OFF cancels uncommitted drags without deleting saved edi
 When OFF, double-clicking a visible wire inserts a native Grasshopper Relay. If several
 connections overlap within the hit tolerance, choose the intended connection from the menu.
 Double-clicking only an invisible, superseded curve opens search instead of inserting a Relay.
-Components and parameter grips retain their native gestures. Tidying the canvas comes next.
+Components and parameter grips retain their native gestures.
+
+Tidy lays a definition out the same way the prototype does: components in columns along the
+data flow, each input lined up with the output feeding it so wires run straight, columns
+stacked without gaps, top-to-bottom order kept. With two or more components or groups
+selected it tidies only those. A group moves as one block and keeps its inside as it is.
+A tidy is one undo step.
 
 ## How it works
 
