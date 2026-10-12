@@ -53,6 +53,13 @@ USING IT
   Alt+1 / Alt+2 / Alt+3                  Curve / Orthogonal / 45° (Option on a Mac).
   Straight Wire menu > Reset Selected Wires
                                          Selected wires lose their hand edits.
+  Straight Wire menu > Tidy All / Tidy Selected
+                                         Lays components out in columns along the
+                                         data flow, with straight wires. With two or
+                                         more components or groups selected, only
+                                         those move. A group moves as one block.
+  Alt+T (Option+T on a Mac), or the Tidy button
+                                         The same. One Undo puts everything back.
 
 EDITING WIRES
 -------------

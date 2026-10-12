@@ -8,7 +8,13 @@ The interaction was designed in a browser prototype first:
 [`docs/reference/straight-wire-prototype.html`](docs/reference/straight-wire-prototype.html).
 Wires can be edited by hand: click to select, drag a lane sideways, drag or double-click to
 add and remove bend points, Delete to reset. Every edit is one Grasshopper undo step and is
-saved in the file. Tidying the canvas comes next.
+saved in the file.
+
+Tidy lays a definition out the same way the prototype does: components in columns along the
+data flow, each input lined up with the output feeding it so wires run straight, columns
+stacked without gaps, top-to-bottom order kept. With two or more components or groups
+selected it tidies only those. A group moves as one block and keeps its inside as it is.
+A tidy is one undo step.
 
 ## How it works
 
