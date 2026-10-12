@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using StraightWire.Core;
@@ -102,13 +103,55 @@ namespace StraightWire.Core.Tests
         }
 
         [Fact]
-        public void The_layout_keeps_its_old_top_left_rounded_to_whole_units()
+        public void The_layout_keeps_its_old_top_left_and_moves_blocks_by_whole_units()
         {
             var blocks = ChainBlocks(1000.4, 500.6);
-            var f = Final(blocks, Tidy.Layout(blocks, ChainLinks(500.6), 10));
-            Assert.Equal(1000, f.Values.Min(p => p.X), 6);
-            Assert.Equal(501, f.Values.Min(p => p.Y), 6);
+            var moved = Tidy.Layout(blocks, ChainLinks(500.6), 10);
+            var f = Final(blocks, moved);
+            Assert.Equal(1000.4, f.Values.Min(p => p.X), 6);
+            Assert.Equal(500.6, f.Values.Min(p => p.Y), 6);
             Assert.Equal(164, f["B"].X - f["A"].X, 6);
+            AssertWholeMoves(blocks, moved);
+        }
+
+        // Grasshopper floors positions to whole units, so a tidy that moved anything by a fraction
+        // would find it "moved" again next time, and a group's members would drift apart.
+        static void AssertWholeMoves(IEnumerable<TidyBlock> blocks, IReadOnlyDictionary<string, Pt> moved)
+        {
+            foreach (var b in blocks)
+                if (moved.TryGetValue(b.Id, out var p))
+                {
+                    Assert.Equal(Math.Round(p.X - b.Bounds.X0), p.X - b.Bounds.X0, 9);
+                    Assert.Equal(Math.Round(p.Y - b.Bounds.Y0), p.Y - b.Bounds.Y0, 9);
+                }
+        }
+
+        /// <summary>Lays out, applies the result, and lays out again with the grips where they now are.</summary>
+        static IReadOnlyDictionary<string, Pt> Twice(TidyBlock[] blocks, double spacing, params (string S, double Out, string T, double In)[] links)
+        {
+            TidyLink[] Links(Dictionary<string, TidyBlock> by) =>
+                links.Select(l => L(l.S, by[l.S].Bounds.Y0 + l.Out, l.T, by[l.T].Bounds.Y0 + l.In)).ToArray();
+            var first = Tidy.Layout(blocks, Links(blocks.ToDictionary(b => b.Id)), spacing);
+            AssertWholeMoves(blocks, first);
+            var f = Final(blocks, first);
+            var again = blocks.Select(b => B(b.Id, f[b.Id].X, f[b.Id].Y, b.Bounds.X1 - b.Bounds.X0, b.Bounds.Y1 - b.Bounds.Y0)).ToArray();
+            return Tidy.Layout(again, Links(again.ToDictionary(b => b.Id)), spacing);
+        }
+
+        [Fact]
+        public void A_fractional_column_gap_still_moves_by_whole_units_and_settles()
+        {
+            // Spacing 8 with three output grips makes a 68.8 gap.
+            var blocks = new[] { B("A", 0, 0, 100, 60), B("B1", 200, 0, 100, 40), B("B2", 200, 100, 100, 40), B("B3", 200, 200, 100, 40), B("C", 400, 0, 100, 80) };
+            Assert.Empty(Twice(blocks, 8, ("A", 10, "B1", 20), ("A", 30, "B2", 20), ("A", 50, "B3", 20),
+                                          ("B1", 20, "C", 20), ("B2", 20, "C", 40), ("B3", 20, "C", 60)));
+        }
+
+        [Fact]
+        public void Fractional_port_offsets_still_move_by_whole_units_and_settle()
+        {
+            var blocks = new[] { B("S", 0, 0, 60, 20), B("S2", 0, 100, 60, 20), B("C", 300, 0, 100, 80) };
+            Assert.Empty(Twice(blocks, 10, ("S", 10, "C", 80.0 / 3), ("S2", 10, "C", 160.0 / 3)));
         }
 
         [Fact]

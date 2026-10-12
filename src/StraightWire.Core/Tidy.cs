@@ -123,12 +123,15 @@ namespace StraightWire.Core
             AlignSources(columns);
             AlignInputs(columns);
 
-            double oldX = order.Min(n => n.Block.Bounds.X0), oldY = order.Min(n => n.Block.Bounds.Y0);
-            double ox = Math.Round(oldX) - order.Min(n => n.X), oy = Math.Round(oldY) - order.Min(n => n.Y);
+            // The layout keeps the old top-left corner. Grasshopper floors positions to whole units,
+            // so every block moves by a whole number of units: a fraction would be undone at once,
+            // making the next tidy "move" it again, and would let a group's members drift apart.
+            double ox = order.Min(n => n.Block.Bounds.X0) - order.Min(n => n.X);
+            double oy = order.Min(n => n.Block.Bounds.Y0) - order.Min(n => n.Y);
             foreach (var n in order)
             {
-                double x = n.X + ox, y = n.Y + oy;
-                if (Math.Abs(x - n.Block.Bounds.X0) > 1e-9 || Math.Abs(y - n.Block.Bounds.Y0) > 1e-9) result[n.Id] = new Pt(x, y);
+                double dx = Math.Round(n.X + ox - n.Block.Bounds.X0), dy = Math.Round(n.Y + oy - n.Block.Bounds.Y0);
+                if (dx != 0 || dy != 0) result[n.Id] = new Pt(n.Block.Bounds.X0 + dx, n.Block.Bounds.Y0 + dy);
             }
             return result;
         }

@@ -22,7 +22,7 @@ Everything in phases 1 and 2 still applies: paths, GUIDs, the commit trailer, MC
 - **Layout constants:**
   - vertical gap VG = 12
   - column gap `max(64, 40 + P · SP · 1.2)`; SP is the file's effective spacing
-  - anchor rounded to whole units
+  - every block moves by whole units (changed after the final review; see spec 4.4, step 6)
 - **Undo names:** "Tidy" for the tidy step.
 - **Command line messages:** "Straight Wire: nothing to tidy." and "Straight Wire: already tidy."
 - **UI text:**

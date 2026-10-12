@@ -106,7 +106,7 @@ Notation:
      - "First" means the input link with the smallest port offset whose source is not a source block. If every source is a source block, the smallest port offset overall.
    - **Sources pass:** each source block with outgoing links wants the y that puts its first output grip (smallest offset) level with that link's input grip.
    - **Resolving a column:** sort the column by wanted y, ties by current order. Each block takes `max(wanted, previous bottom + VG)`.
-6. **Anchor.** Translate the whole layout so its top-left corner lands on the top-left of the moved blocks' current bounding box, rounded to whole units.
+6. **Anchor.** Translate the whole layout so its top-left corner lands on the top-left of the moved blocks' current bounding box. Each block then moves by its offset rounded to whole units: Grasshopper floors positions to whole units, so a fractional move would be undone at once, a second tidy would "move" it again, and a group's members would drift apart.
 
 The result is a new top-left for every moved block; a block whose position doesn't change is left out.
 
