@@ -104,6 +104,13 @@ namespace StraightWire
         public static void ResetWires(GH_Document doc, IEnumerable<string> wireIds) =>
             Edit(doc, "Reset Wires", current => current.WithoutEdits(wireIds));
 
+        /// <summary>Tidy All, or Tidy Selected when the selection makes two or more blocks.</summary>
+        public static void Tidy()
+        {
+            var canvas = Instances.ActiveCanvas;
+            if (canvas?.Document != null) Tidier.Run(canvas);
+        }
+
         public static void ResetSelected()
         {
             var doc = ActiveDocument;

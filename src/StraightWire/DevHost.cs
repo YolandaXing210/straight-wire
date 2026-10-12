@@ -69,7 +69,7 @@ namespace StraightWire
 
         /// <summary>
         /// Test hooks for tools/verify: "fail-next-paint", "retry", and the user's commands
-        /// "style:bezier|ortho|diag", "spacing:N", "follow", "save", "default".
+        /// "style:bezier|ortho|diag", "spacing:N", "follow", "save", "default", "tidy".
         /// The user's commands act on the active canvas's document and return Describe().
         /// </summary>
         public static string Run(string command)
@@ -103,6 +103,8 @@ namespace StraightWire
                 case "default":
                     Commands.MakeMyDefault();
                     return Describe();
+                case "tidy":
+                    return Tidier.Run(Instances.ActiveCanvas);
                 default:
                     return "unknown command: " + command;
             }

@@ -94,8 +94,8 @@ namespace StraightWire
         }
 
         /// <summary>
-        /// Alt+1 / 2 / 3 (Option on a Mac) pick Curve / Orthogonal / 45°. A modifier keeps them clear
-        /// of Grasshopper's own keys.
+        /// Alt+1 / 2 / 3 (Option on a Mac) pick Curve / Orthogonal / 45°, and Alt+T tidies. A modifier
+        /// keeps them clear of Grasshopper's own keys.
         /// </summary>
         void OnKeyDown(object sender, KeyEventArgs e)
         {
@@ -107,6 +107,10 @@ namespace StraightWire
                 case Keys.D1: style = WireStyle.Curve; break;
                 case Keys.D2: style = WireStyle.Orthogonal; break;
                 case Keys.D3: style = WireStyle.Diagonal; break;
+                case Keys.T:
+                    Commands.Tidy();
+                    e.Handled = true;
+                    return;
                 default: return;
             }
             Commands.SetStyle(style);
