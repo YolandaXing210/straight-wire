@@ -18,6 +18,7 @@ namespace StraightWire
                 Log.Once("unavailable", "this Grasshopper does not expose the wire pens Straight Wire draws with, so it stays off.");
                 return;
             }
+            WireEditMode.Enabled = false;
             _started = true;
             Instances.CanvasCreated += OnCanvasCreated;
             if (Instances.ActiveCanvas != null) OnCanvasCreated(Instances.ActiveCanvas);
@@ -30,6 +31,7 @@ namespace StraightWire
             _started = false;
             Instances.CanvasCreated -= OnCanvasCreated;
             CanvasHook.DetachAll();
+            WireEditMode.Enabled = false;
             StyleMenu.Remove();
         }
 

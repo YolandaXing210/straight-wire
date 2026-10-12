@@ -44,6 +44,7 @@ namespace StraightWire
         RouteResult _routes;
         readonly StyleWidget _widget = new StyleWidget();
         readonly EditWidget _editor = new EditWidget();
+        readonly RelayWidget _relay = new RelayWidget();
 
         CanvasHook(GH_Canvas canvas)
         {
@@ -55,6 +56,7 @@ namespace StraightWire
         /// <summary>Delete or Backspace resets the selected wires; Esc clears the wire selection.</summary>
         void EditKeys(KeyEventArgs e)
         {
+            if (!WireEditMode.Enabled) return;
             var editor = WireEditor.For(_canvas);
             if (editor.Selected.Count == 0 || e.Alt || e.Control) return;
             if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back)
@@ -73,7 +75,7 @@ namespace StraightWire
 
         void OnMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.None) return;
+            if (!WireEditMode.Enabled || e.Button != MouseButtons.None) return;
             Log.Guard("edit-hover", () => _editor.Hover(_canvas, _canvas.Viewport.UnprojectPoint(new PointF(e.X, e.Y))));
         }
 
@@ -91,6 +93,8 @@ namespace StraightWire
             e.AddWidget(_widget);
             _editor.Owner = _canvas;
             e.AddWidget(_editor);
+            _relay.Owner = _canvas;
+            e.AddWidget(_relay);
         }
 
         /// <summary>
@@ -135,6 +139,8 @@ namespace StraightWire
             }
             hook._editor.Owner = canvas;
             canvas.Widgets.Add(hook._editor);
+            hook._relay.Owner = canvas;
+            canvas.Widgets.Add(hook._relay);
             Hooks.Add(hook);
             canvas.Refresh();
         }
@@ -150,6 +156,20 @@ namespace StraightWire
             foreach (var hook in Hooks) hook._failed = false;
         }
 
+        public static void CloseRelayChoicesAll()
+        {
+            foreach (var hook in Hooks) hook._relay.CloseChoices();
+        }
+
+        public static void CancelEditingAll()
+        {
+            foreach (var hook in Hooks)
+            {
+                hook._editor.Cancel(hook._canvas);
+                hook._relay.CloseChoices();
+            }
+        }
+
         public static void RefreshAll()
         {
             foreach (var hook in Hooks) hook._canvas.Refresh();
@@ -159,6 +179,8 @@ namespace StraightWire
 
         void Detach(bool refresh)
         {
+            _relay.Clear();
+            _editor.Cancel(_canvas);
             if (_takenOver) Restore();
             _canvas.CanvasPrePaintWires -= OnPrePaintWires;
             _canvas.CanvasPostPaintWires -= OnPostPaintWires;
@@ -169,6 +191,7 @@ namespace StraightWire
             GH_Canvas.WidgetListCreated -= OnWidgetListCreated;
             _canvas.Widgets.Remove(_widget);
             _canvas.Widgets.Remove(_editor);
+            _canvas.Widgets.Remove(_relay);
             Hooks.Remove(this);
             if (refresh) _canvas.Refresh();
         }
@@ -176,6 +199,7 @@ namespace StraightWire
         void OnPrePaintWires(GH_Canvas canvas)
         {
             _read = null;
+            _relay.Publish(null);
             if (_failed || _takenOver) return;
             try
             {
@@ -190,11 +214,12 @@ namespace StraightWire
                 var editor = WireEditor.For(canvas);
                 // Routing waits while a component is dragged, and while a point or segment is.
                 bool componentDrag = PretendDrag || canvas.ActiveInteraction is GH_DragInteraction;
-                bool hold = componentDrag || editor.Live != null;
+                bool hold = componentDrag || (WireEditMode.Enabled && editor.Live != null);
                 if (!componentDrag) DocStore.Settle(doc);
-                var read = SceneReader.Read(doc, state.Effective, editor);
+                var read = SceneReader.Read(doc, state.Effective, WireEditMode.Enabled ? editor : null);
                 editor.LastRead = read;
                 editor.LastRoutes = null;
+                _read = read;
                 if (read.RoutedCount == 0) return;   // all curves: Grasshopper draws everything
                 RouteResult routes;
                 if (hold && state.Routes != null) routes = Frozen.Keep(state.Routes, read.Scene);
@@ -224,11 +249,15 @@ namespace StraightWire
 
         void OnPostPaintWires(GH_Canvas canvas)
         {
-            if (!_takenOver) return;
-            Restore();
+            if (_read == null) return;
+            bool custom = _takenOver;
+            if (custom) Restore();
             try
             {
-                WireRenderer.Draw(canvas, _read, _routes, WireEditor.For(canvas));
+                var snapshot = new VisibleWires(canvas, _read);
+                if (custom) WireRenderer.Draw(canvas, _read, _routes, WireEditor.For(canvas), snapshot);
+                else foreach (var wire in _read.Wires) snapshot.AddCurve(wire);
+                _relay.Publish(snapshot);
             }
             catch (Exception ex)
             {
@@ -273,6 +302,7 @@ namespace StraightWire
 
         void Fail(string what, Exception ex)
         {
+            _relay.Clear();
             _failed = true;
             if (_takenOver) Restore();
             Log.Once("paint-" + what, what + " failed (" + ex.Message + "). This canvas is back to Grasshopper's own wires; " +

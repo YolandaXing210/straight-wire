@@ -21,7 +21,7 @@ namespace StraightWire
 
         const float HandlePx = 7;
 
-        public static void Draw(GH_Canvas canvas, SceneRead read, RouteResult routes, WireEditor editor)
+        public static void Draw(GH_Canvas canvas, SceneRead read, RouteResult routes, WireEditor editor, VisibleWires snapshot)
         {
             var g = canvas.Graphics;
             var painter = canvas.Painter;
@@ -39,17 +39,18 @@ namespace StraightWire
                 if (w.Display == GH_ParamWireDisplay.faint && !selected) type = GH_WireType.faint;
 
                 Pt[] path = null;
-                if (w.Routed && editor.Live is (string liveId, Pt[] livePath) && liveId == w.Id) path = livePath;
+                if (WireEditMode.Enabled && w.Routed && editor.Live is (string liveId, Pt[] livePath) && liveId == w.Id) path = livePath;
                 if (path == null && (!w.Routed || !routes.Paths.TryGetValue(w.Id, out path)))
                 {
                     painter.DrawConnection(w.End, w.Start, GH_WireDirection.left, GH_WireDirection.right,
                                            w.TargetSelected, w.SourceSelected, type);
+                    snapshot.AddCurve(w);
                     continue;
                 }
 
                 Note(dots, w, type);
-                if (!Bounds(path).IntersectsWith(visible)) continue;
-                bool picked = editor.Selected.Contains(w.Id);
+                if (!Bounds(path).IntersectsWith(visible)) { snapshot.Add(w, path); continue; }
+                bool picked = WireEditMode.Enabled && editor.Selected.Contains(w.Id);
                 if (picked && type == GH_WireType.faint) type = fancy ? GH_Painter.DetermineWireType(w.Source.VolatileData) : GH_WireType.generic;
                 var pen = picked ? NativeWires.Pen(painter, w.Start, w.End, true, true, type)
                                  : NativeWires.Pen(painter, w.Start, w.End, w.SourceSelected, w.TargetSelected, type);
@@ -58,7 +59,8 @@ namespace StraightWire
                 try
                 {
                     g.DrawLines(pen, points);
-                    if (!picked && w.Id == editor.Hover)
+                    snapshot.Add(w, path);
+                    if (WireEditMode.Enabled && !picked && w.Id == editor.Hover)
                         using (var glow = new Pen(Color.FromArgb(120, GH_Skin.wire_selected_a), pen.Width + 2) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round })
                             g.DrawLines(glow, points);
                 }

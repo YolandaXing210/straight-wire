@@ -31,7 +31,7 @@ namespace StraightWire
         public static string Describe()
         {
             var doc = Instances.ActiveCanvas?.Document;
-            if (doc == null) return "no document on the canvas";
+            if (doc == null) return "no document on the canvas; edit-mode=" + (WireEditMode.Enabled ? "on" : "off");
             var state = DocStore.Get(doc);
             var effective = state.Effective;
             var read = SceneReader.Read(doc, effective);
@@ -47,6 +47,7 @@ namespace StraightWire
                     + " drawn=" + (Instances.ActiveCanvas == null ? 0 : WireEditor.For(Instances.ActiveCanvas).LastRoutes?.Paths.Count ?? 0),
                 CanvasHook.LastRouteMilliseconds,
                 CanvasHook.HasWidget(Instances.ActiveCanvas) ? (UserSettings.WidgetVisible ? "shown" : "hidden") : "missing")
+                + " edit-mode=" + (WireEditMode.Enabled ? "on" : "off")
                 + " selected=" + (Instances.ActiveCanvas == null ? 0 : WireEditor.For(Instances.ActiveCanvas).Selected.Count)
                 + " lanes=" + effective.Lanes.Count + " handdrawn=" + effective.Points.Count;
         }
@@ -69,7 +70,7 @@ namespace StraightWire
 
         /// <summary>
         /// Test hooks for tools/verify: "fail-next-paint", "retry", and the user's commands
-        /// "style:bezier|ortho|diag", "spacing:N", "follow", "save", "default", "tidy".
+        /// "style:bezier|ortho|diag", "spacing:N", "follow", "save", "default", "edit-mode:on|off", "tidy".
         /// The user's commands act on the active canvas's document and return Describe().
         /// </summary>
         public static string Run(string command)
@@ -77,6 +78,9 @@ namespace StraightWire
             string[] parts = command.Split(':');
             switch (parts[0])
             {
+                case "edit-mode" when parts.Length == 2 && (parts[1] == "on" || parts[1] == "off"):
+                    WireEditMode.Enabled = parts[1] == "on";
+                    return Describe();
                 case "drag":
                     CanvasHook.PretendDrag = parts.Length == 2 && parts[1] == "on";
                     CanvasHook.RefreshAll();

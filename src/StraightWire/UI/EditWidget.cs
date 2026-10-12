@@ -57,11 +57,45 @@ namespace StraightWire.UI
         PointF _downCanvas;
         bool _dragging;
         List<Pt> _points0;
+        Cursor _previousCursor, _editCursor;
+
+        void RestoreCursor(GH_Canvas canvas)
+        {
+            if (_editCursor != null && canvas.Cursor == _editCursor)
+                canvas.Cursor = _previousCursor;
+            _previousCursor = _editCursor = null;
+        }
+
+        /// <summary>Cancel only our gesture, without committing or ending native interactions.</summary>
+        public void Cancel(GH_Canvas canvas)
+        {
+            var editor = WireEditor.For(canvas);
+            bool preview = editor.Pin != null || editor.Live != null;
+            editor.Selected.Clear();
+            editor.Hover = null;
+            editor.Pin = null;
+            editor.Live = null;
+            editor.LastRead = null;
+            editor.LastRoutes = null;
+            _press = default;
+            _dragging = false;
+            _points0 = null;
+            _downControl = default;
+            _downCanvas = default;
+            if (preview && canvas.Document != null)
+                DocStore.Get(canvas.Document).Routes = null;
+            if (ReferenceEquals(canvas.ActiveWidget, this))
+            {
+                canvas.ActiveWidget = null;
+                canvas.Capture = false;
+            }
+            RestoreCursor(canvas);
+        }
 
         public override bool Visible
         {
-            get => UserSettings.EditingEnabled;
-            set => UserSettings.EditingEnabled = value;
+            get => WireEditMode.Enabled;
+            set => WireEditMode.Enabled = value;
         }
 
         public override string Name => "Straight Wire Editing";
@@ -74,7 +108,7 @@ namespace StraightWire.UI
         public override void Render(GH_Canvas canvas) { }
 
         public override bool Contains(Point pt_control, PointF pt_canvas) =>
-            Owner != null && Control.MouseButtons == MouseButtons.Left && Find(Owner, pt_canvas).Hit;
+            WireEditMode.Enabled && Owner != null && Control.MouseButtons == MouseButtons.Left && Find(Owner, pt_canvas).Hit;
 
         /// <summary>Updates the hovered wire and the cursor; called from the canvas's MouseMove when no button is down.</summary>
         public void Hover(GH_Canvas canvas, PointF canvasPoint)
@@ -89,13 +123,18 @@ namespace StraightWire.UI
                 canvas.Invalidate();
             }
             if (target.Hit)
-                canvas.Cursor = target.Kind == Kind.Lane ? Cursors.SizeWE
+            {
+                if (_editCursor == null || canvas.Cursor != _editCursor) _previousCursor = canvas.Cursor;
+                canvas.Cursor = _editCursor = target.Kind == Kind.Lane ? Cursors.SizeWE
                               : target.Kind == Kind.Segment || target.Kind == Kind.Point ? Cursors.SizeAll
                               : Cursors.Hand;
+            }
+            else RestoreCursor(canvas);
         }
 
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            if (!WireEditMode.Enabled) return GH_ObjectResponse.Ignore;
             var response = GH_ObjectResponse.Ignore;
             Log.Guard("edit-press", () => response = Press(sender, e));
             return response;
@@ -148,6 +187,7 @@ namespace StraightWire.UI
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            if (!WireEditMode.Enabled) return GH_ObjectResponse.Ignore;
             if (!_press.Hit) return GH_ObjectResponse.Ignore;
             Log.Guard("edit-drag", () => Drag(sender, e));
             return GH_ObjectResponse.Handled;
@@ -191,6 +231,7 @@ namespace StraightWire.UI
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            if (!WireEditMode.Enabled) return GH_ObjectResponse.Ignore;
             if (!_press.Hit) return GH_ObjectResponse.Ignore;
             var editor = WireEditor.For(sender);
             try
@@ -225,6 +266,7 @@ namespace StraightWire.UI
 
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            if (!WireEditMode.Enabled) return GH_ObjectResponse.Ignore;
             var response = GH_ObjectResponse.Ignore;
             Log.Guard("edit-double-click", () =>
             {
