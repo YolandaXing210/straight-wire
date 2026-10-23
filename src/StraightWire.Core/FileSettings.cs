@@ -36,18 +36,21 @@ namespace StraightWire.Core
 
     /// <summary>
     /// A file's wire settings: its global style, its spacing, per-wire style overrides, and the
-    /// user's edits (lane positions and hand-drawn points), all keyed by wire id. Immutable.
+    /// user's edits (lane positions, hand-drawn points and backwards wires' runs), all keyed by
+    /// wire id. Immutable.
     /// </summary>
     public sealed class FileSettings
     {
         public FileSettings(WireStyle mode, double spacing, IReadOnlyDictionary<string, WireStyle> overrides = null,
-                            IReadOnlyDictionary<string, double> lanes = null, IReadOnlyDictionary<string, ManualPoints> points = null)
+                            IReadOnlyDictionary<string, double> lanes = null, IReadOnlyDictionary<string, ManualPoints> points = null,
+                            IReadOnlyDictionary<string, BackRuns> backs = null)
         {
             Mode = mode;
             Spacing = SettingsJson.ClampSpacing(spacing);
             Overrides = Copy(overrides);
             Lanes = Copy(lanes);
             Points = Copy(points);
+            Backs = Copy(backs);
         }
 
         public WireStyle Mode { get; }
@@ -57,34 +60,37 @@ namespace StraightWire.Core
         /// <summary>Where the user put each automatic wire's lane, as a fraction of its free range.</summary>
         public IReadOnlyDictionary<string, double> Lanes { get; }
 
-        /// <summary>Hand-drawn wires. A wire listed here ignores its lane entry.</summary>
+        /// <summary>Hand-drawn wires. A wire listed here ignores its lane and back entries.</summary>
         public IReadOnlyDictionary<string, ManualPoints> Points { get; }
+
+        /// <summary>Where the user put each automatic backwards wire's runs.</summary>
+        public IReadOnlyDictionary<string, BackRuns> Backs { get; }
 
         public WireStyle StyleOf(string wireId) => Overrides.TryGetValue(wireId, out var s) ? s : Mode;
 
-        public FileSettings WithMode(WireStyle mode) => new FileSettings(mode, Spacing, Overrides, Lanes, Points);
+        public FileSettings WithMode(WireStyle mode) => new FileSettings(mode, Spacing, Overrides, Lanes, Points, Backs);
 
-        public FileSettings WithSpacing(double spacing) => new FileSettings(Mode, spacing, Overrides, Lanes, Points);
+        public FileSettings WithSpacing(double spacing) => new FileSettings(Mode, spacing, Overrides, Lanes, Points, Backs);
 
         public FileSettings WithOverride(IEnumerable<string> wireIds, WireStyle style)
         {
             var d = Copy(Overrides);
             foreach (string id in wireIds) d[id] = style;
-            return new FileSettings(Mode, Spacing, d, Lanes, Points);
+            return new FileSettings(Mode, Spacing, d, Lanes, Points, Backs);
         }
 
         public FileSettings WithoutOverride(IEnumerable<string> wireIds)
         {
             var d = Copy(Overrides);
             foreach (string id in wireIds) d.Remove(id);
-            return new FileSettings(Mode, Spacing, d, Lanes, Points);
+            return new FileSettings(Mode, Spacing, d, Lanes, Points, Backs);
         }
 
         public FileSettings WithLane(string wireId, double fraction)
         {
             var d = Copy(Lanes);
             d[wireId] = Geo.Clamp(fraction, 0, 1);
-            return new FileSettings(Mode, Spacing, Overrides, d, Points);
+            return new FileSettings(Mode, Spacing, Overrides, d, Points, Backs);
         }
 
         /// <summary>Makes the wire hand-drawn through these points; an empty list makes it automatic again.</summary>
@@ -93,20 +99,53 @@ namespace StraightWire.Core
             var d = Copy(Points);
             if (points == null || points.Points.Count == 0) d.Remove(wireId);
             else d[wireId] = points;
-            return new FileSettings(Mode, Spacing, Overrides, Lanes, d);
+            return new FileSettings(Mode, Spacing, Overrides, Lanes, d, Backs);
         }
 
-        /// <summary>Back to automatic: forgets the wires' lane positions and points, keeps their style.</summary>
+        /// <summary>Places a backwards wire's runs; null or no runs makes them automatic again.</summary>
+        public FileSettings WithBack(string wireId, BackRuns runs)
+        {
+            var d = Copy(Backs);
+            if (runs == null || runs.IsEmpty) d.Remove(wireId);
+            else d[wireId] = runs;
+            return new FileSettings(Mode, Spacing, Overrides, Lanes, Points, d);
+        }
+
+        /// <summary>Back to automatic: forgets the wires' lane positions, points and back runs, keeps their style.</summary>
         public FileSettings WithoutEdits(IEnumerable<string> wireIds)
         {
             var lanes = Copy(Lanes);
             var points = Copy(Points);
+            var backs = Copy(Backs);
             foreach (string id in wireIds)
             {
                 lanes.Remove(id);
                 points.Remove(id);
+                backs.Remove(id);
             }
-            return new FileSettings(Mode, Spacing, Overrides, lanes, points);
+            return new FileSettings(Mode, Spacing, Overrides, lanes, points, backs);
+        }
+
+        /// <summary>
+        /// Back to automatic, and for every back wire among them, the out run it shares with the
+        /// other back wires from its output too. <paramref name="backGroups"/> gives the output of
+        /// each wire that runs backwards.
+        /// </summary>
+        public FileSettings WithoutEdits(IEnumerable<string> wireIds, IReadOnlyDictionary<string, string> backGroups)
+        {
+            var ids = wireIds.ToList();
+            var outputs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string id in ids)
+                if (backGroups.TryGetValue(id, out string output)) outputs.Add(output);
+            var backs = Copy(Backs);
+            foreach (var kv in Backs)
+                if (backGroups.TryGetValue(kv.Key, out string output) && outputs.Contains(output))
+                {
+                    var runs = kv.Value.With(BackRun.Out, null);
+                    if (runs.IsEmpty) backs.Remove(kv.Key);
+                    else backs[kv.Key] = runs;
+                }
+            return new FileSettings(Mode, Spacing, Overrides, Lanes, Points, backs).WithoutEdits(ids);
         }
 
         /// <summary>Drops everything kept for wires that no longer exist, so files do not collect dead ids.</summary>
@@ -119,7 +158,7 @@ namespace StraightWire.Core
                     if (!liveWireIds.Contains(id)) d.Remove(id);
                 return d;
             }
-            return new FileSettings(Mode, Spacing, Keep(Overrides), Keep(Lanes), Keep(Points));
+            return new FileSettings(Mode, Spacing, Keep(Overrides), Keep(Lanes), Keep(Points), Keep(Backs));
         }
 
         static Dictionary<string, T> Copy<T>(IReadOnlyDictionary<string, T> source) =>
@@ -184,6 +223,19 @@ namespace StraightWire.Core
                         }
                         w.WriteEndObject();
                     }
+                    if (s.Backs.Count > 0)
+                    {
+                        w.WriteStartObject("backs");
+                        foreach (var kv in s.Backs.OrderBy(k => k.Key, StringComparer.Ordinal))
+                        {
+                            w.WriteStartObject(kv.Key);
+                            if (kv.Value.Out is double o) w.WriteNumber("out", o);
+                            if (kv.Value.In is double i) w.WriteNumber("in", i);
+                            if (kv.Value.Cross is double c) w.WriteNumber("cross", c);
+                            w.WriteEndObject();
+                        }
+                        w.WriteEndObject();
+                    }
                     w.WriteEndObject();
                 }
                 return Encoding.UTF8.GetString(stream.ToArray());
@@ -206,6 +258,16 @@ namespace StraightWire.Core
             var pts = new List<Pt>(p.Count / 2);
             for (int i = 0; i < p.Count; i += 2) pts.Add(new Pt(p[i], p[i + 1]));
             return new ManualPoints(pts, new Pt(at[0], at[1]), new Pt(at[2], at[3]));
+        }
+
+        /// <summary>A "backs" entry: {"out":…,"in":…,"cross":…}, any part missing; null if no part is a number.</summary>
+        static BackRuns ReadBack(JsonElement e)
+        {
+            if (e.ValueKind != JsonValueKind.Object) return null;
+            double? Part(string name) =>
+                e.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : (double?)null;
+            var runs = new BackRuns(Part("out"), Part("in"), Part("cross"));
+            return runs.IsEmpty ? null : runs;
         }
 
         public static SettingsStatus Parse(string json, out FileSettings settings)
@@ -244,7 +306,11 @@ namespace StraightWire.Core
                     if (root.TryGetProperty("points", out var pointObj) && pointObj.ValueKind == JsonValueKind.Object)
                         foreach (var p in pointObj.EnumerateObject())
                             if (ReadPoints(p.Value) is ManualPoints manual) points[p.Name] = manual;
-                    settings = new FileSettings(mode, spacing, overrides, lanes, points);
+                    var backs = new Dictionary<string, BackRuns>(StringComparer.Ordinal);
+                    if (root.TryGetProperty("backs", out var backObj) && backObj.ValueKind == JsonValueKind.Object)
+                        foreach (var p in backObj.EnumerateObject())
+                            if (ReadBack(p.Value) is BackRuns runs) backs[p.Name] = runs;
+                    settings = new FileSettings(mode, spacing, overrides, lanes, points, backs);
                     return SettingsStatus.Ok;
                 }
             }

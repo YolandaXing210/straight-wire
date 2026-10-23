@@ -69,9 +69,12 @@ namespace StraightWire
                         draw.Manual = manual != null;
                         double? lane = manual == null && settings.Lanes.TryGetValue(draw.Id, out double f) ? f : (double?)null;
                         double? pin = editor?.Pin is (string pinId, double pinX) && pinId == draw.Id ? pinX : (double?)null;
+                        BackRuns back = null;
+                        if (manual == null && (editor?.BackPins == null || !editor.BackPins.TryGetValue(draw.Id, out back)))
+                            settings.Backs.TryGetValue(draw.Id, out back);
                         wires.Add(new SceneWire(draw.Id, source.InstanceGuid.ToString(),
                             source.Attributes.GetTopLevel.DocObject.InstanceGuid.ToString(), obj.InstanceGuid.ToString(),
-                            ToPt(draw.Start), ToPt(draw.End), draw.Style, lane, pin, manual?.Points));
+                            ToPt(draw.Start), ToPt(draw.End), draw.Style, lane, pin, manual?.Points, back));
                     }
             }
             return new SceneRead { Scene = new Scene(nodes, wires, settings.Spacing), Wires = draws, RoutedCount = routed };
@@ -103,6 +106,16 @@ namespace StraightWire
         }
 
         public static string WireId(IGH_Param source, IGH_Param target) => source.InstanceGuid + ">" + target.InstanceGuid;
+
+        /// <summary>The source of every wire that runs backwards: back wires from one source share their out run.</summary>
+        public static Dictionary<string, string> BackGroups(GH_Document doc)
+        {
+            var groups = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var (source, target) in Connections(doc))
+                if (target.Attributes.InputGrip.X - source.Attributes.OutputGrip.X < Routing.BackwardBelow)
+                    groups[WireId(source, target)] = source.InstanceGuid.ToString();
+            return groups;
+        }
 
         /// <summary>For every wire, the top-left corners of its source and target components: what hand-drawn points are anchored to.</summary>
         public static Dictionary<string, (Pt Source, Pt Target)> Anchors(GH_Document doc)

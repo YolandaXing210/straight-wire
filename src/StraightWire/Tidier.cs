@@ -44,7 +44,8 @@ namespace StraightWire
             var doc = canvas?.Document;
             if (doc == null) return "no document";
             var editor = WireEditor.For(canvas);
-            if (canvas.ActiveInteraction != null || CanvasHook.PretendDrag || editor.Live != null || editor.Pin != null) return "busy";
+            if (canvas.ActiveInteraction != null || CanvasHook.PretendDrag || editor.Live != null || editor.Pin != null || editor.BackPins != null)
+                return "busy";
 
             var read = Read(canvas);
             if (read.Plan.Links.Count == 0)
@@ -73,7 +74,7 @@ namespace StraightWire
                         moves.Add((obj, delta, obj.Attributes.Pivot));
             }
             var reset = TidyScope.WiresToReset(read.Plan, moved.Keys, read.Wires)
-                                 .Where(id => effective.Lanes.ContainsKey(id) || effective.Points.ContainsKey(id)).ToList();
+                                 .Where(id => effective.Lanes.ContainsKey(id) || effective.Points.ContainsKey(id) || effective.Backs.ContainsKey(id)).ToList();
 
             // Pivot actions record where everything is, before anything changes. The settings are
             // written next, before anything moves, so the next paint's settling already sees the

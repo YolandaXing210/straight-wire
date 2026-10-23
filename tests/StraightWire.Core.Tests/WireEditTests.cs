@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using StraightWire.Core;
 using Xunit;
 
@@ -99,5 +100,59 @@ namespace StraightWire.Core.Tests
         [Fact]
         public void RemovePoint_of_the_last_point_leaves_none() =>
             Assert.Empty(WireEdit.RemovePoint(new[] { P(5, 5) }, 0));
+
+        static readonly Pt[] Back = { P(380, 230), P(398, 230), P(398, 130), P(82, 130), P(82, 30), P(100, 30) };
+        static readonly BackRuns Stubs = new BackRuns(18, 18, 0);
+
+        [Fact]
+        public void BackRunFor_maps_an_orthogonal_back_wire() =>
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Cross, BackRun.In, BackRun.None },
+                Enumerable.Range(0, 5).Select(i => WireEdit.BackRunFor(Back, Stubs, i)));
+
+        [Fact]
+        public void BackRunFor_maps_a_chamfered_back_wire()
+        {
+            // Stub, then each vertical with the corners on it, the crossing between them, stub.
+            var chamfered = Core.Paths.Chamfer(Back, 14).ToArray();
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Out, BackRun.Out, BackRun.Cross,
+                                 BackRun.In, BackRun.In, BackRun.In, BackRun.None },
+                Enumerable.Range(0, chamfered.Length - 1).Select(i => WireEdit.BackRunFor(chamfered, Stubs, i)));
+        }
+
+        [Fact]
+        public void BackRunFor_maps_verticals_the_chamfers_used_up()
+        {
+            // A 25-long out vertical is all corner: its two chamfers meet at x 298.
+            var path = new[] { P(280, 110), P(285.5, 110), P(298, 97.5), P(285.5, 85), P(-5.5, 85), P(-18, 72.5), P(-5.5, 60), P(0, 60) };
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Out, BackRun.Cross, BackRun.In, BackRun.In, BackRun.None },
+                Enumerable.Range(0, path.Length - 1).Select(i => WireEdit.BackRunFor(path, Stubs, i)));
+        }
+
+        [Fact]
+        public void BackRunFor_maps_a_single_diagonal_crossing()
+        {
+            var path = new[] { P(220, 430), P(224, 430), P(238, 416), P(238, 308), P(82, 152), P(82, 44), P(96, 30), P(100, 30) };
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Out, BackRun.Cross, BackRun.In, BackRun.In, BackRun.None },
+                Enumerable.Range(0, path.Length - 1).Select(i => WireEdit.BackRunFor(path, Stubs, i)));
+        }
+
+        [Fact]
+        public void BackRunFor_finds_moved_verticals() =>
+            Assert.Equal(new[] { BackRun.Out, BackRun.Cross, BackRun.In },
+                new[] { 1, 2, 3 }.Select(i => WireEdit.BackRunFor(
+                    new[] { P(380, 230), P(420, 230), P(420, 130), P(70, 130), P(70, 30), P(100, 30) }, new BackRuns(40, 30, 0), i)));
+
+        [Fact]
+        public void DragBack_moves_only_the_dragged_part()
+        {
+            var stored = new BackRuns(@in: 25);
+            var routed = new BackRuns(18, 25, 0);
+            var o = WireEdit.DragBack(stored, routed, BackRun.Out, 10, 5);
+            var i = WireEdit.DragBack(stored, routed, BackRun.In, 10, 5);
+            var c = WireEdit.DragBack(stored, routed, BackRun.Cross, 10, -7);
+            Assert.Equal((28.0, 25.0, (double?)null), (o.Out.Value, o.In.Value, o.Cross));
+            Assert.Equal(((double?)null, 15.0, (double?)null), (i.Out, i.In.Value, i.Cross));
+            Assert.Equal(((double?)null, 25.0, -7.0), (c.Out, c.In.Value, c.Cross.Value));
+        }
     }
 }

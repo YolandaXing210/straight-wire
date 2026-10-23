@@ -52,5 +52,12 @@ namespace StraightWire.Core.Tests
             var cached = Router.Route(Layout(), null);
             Assert.Equal(cached.LaneFractions["w002"], Frozen.Keep(cached, Layout(t1Y: 300)).LaneFractions["w002"]);
         }
+
+        [Fact]
+        public void Back_runs_pass_through()
+        {
+            var cached = Router.Route(Layout(), null);
+            Assert.Same(cached.Backs, Frozen.Keep(cached, Layout(t1Y: 300)).Backs);
+        }
     }
 }

@@ -26,6 +26,9 @@ namespace StraightWire
         /// <summary>A point or segment drag in progress: the wire and its live path.</summary>
         public (string Id, Pt[] Path)? Live;
 
+        /// <summary>A backwards wire's run being dragged: the runs so far of every wire the drag moves.</summary>
+        public Dictionary<string, BackRuns> BackPins;
+
         /// <summary>The scene and routes of the last paint.</summary>
         public SceneRead LastRead;
         public RouteResult LastRoutes;

@@ -92,11 +92,8 @@ namespace StraightWire.Core
         public static List<Pt> Lane(Pt a, Pt b, double x) =>
             new List<Pt> { a, new Pt(x, a.Y), new Pt(x, b.Y), b };
 
-        /// <summary>A backwards wire: a stub out, across at y, a stub in [orthoPath for a back wire].</summary>
-        public static List<Pt> Back(Pt a, Pt b, double y)
-        {
-            double x1 = a.X + Routing.Stub, x2 = b.X - Routing.Stub;
-            return new List<Pt> { a, new Pt(x1, a.Y), new Pt(x1, y), new Pt(x2, y), new Pt(x2, b.Y), b };
-        }
+        /// <summary>A backwards wire: out to x1, across at y, in from x2 [orthoPath for a back wire].</summary>
+        public static List<Pt> Back(Pt a, Pt b, double x1, double x2, double y) =>
+            new List<Pt> { a, new Pt(x1, a.Y), new Pt(x1, y), new Pt(x2, y), new Pt(x2, b.Y), b };
     }
 }

@@ -7,8 +7,8 @@ namespace StraightWire.Core.Tests
     public class SceneTests
     {
         static SceneNode N(string id, double x) => new SceneNode(id, Rect.FromXYWH(x, 0, 80, 40));
-        static SceneWire W(string id, WireStyle style = WireStyle.Diagonal) =>
-            new SceneWire(id, "a:0", "a", "b", new Pt(80, 20), new Pt(200, 60), style);
+        static SceneWire W(string id, WireStyle style = WireStyle.Diagonal, BackRuns back = null) =>
+            new SceneWire(id, "a:0", "a", "b", new Pt(80, 20), new Pt(200, 60), style, back: back);
 
         [Fact]
         public void Nodes_and_wires_are_sorted_by_id()
@@ -33,6 +33,14 @@ namespace StraightWire.Core.Tests
             Assert.NotEqual(baseline, new Scene(new[] { N("a", 0.5) }, new[] { W("w1") }, 10).Fingerprint());
             Assert.NotEqual(baseline, new Scene(new[] { N("a", 0) }, new[] { W("w1", WireStyle.Orthogonal) }, 10).Fingerprint());
             Assert.NotEqual(baseline, new Scene(new[] { N("a", 0) }, new[] { W("w1") }, 12).Fingerprint());
+        }
+
+        [Fact]
+        public void Fingerprint_changes_with_back_runs()
+        {
+            long Of(BackRuns back) => new Scene(new[] { N("a", 0) }, new[] { W("w1", back: back) }, 10).Fingerprint();
+            Assert.Equal(3, new[] { Of(null), Of(new BackRuns(cross: 1)), Of(new BackRuns(cross: 2)) }.Distinct().Count());
+            Assert.NotEqual(Of(new BackRuns(@out: 20)), Of(new BackRuns(@in: 20)));
         }
     }
 }

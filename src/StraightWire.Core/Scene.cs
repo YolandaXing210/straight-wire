@@ -25,16 +25,18 @@ namespace StraightWire.Core
     /// Curve wires are not routed; they are in the scene so junctions know their group is mixed.
     ///
     /// Edits: LaneFraction keeps an automatic wire's lane at that fraction of its free range;
-    /// PinX holds the lane being dragged; Points makes the wire hand-drawn through those points.
+    /// PinX holds the lane being dragged; Points makes the wire hand-drawn through those points;
+    /// Back places a backwards wire's runs.
     /// </summary>
     public sealed class SceneWire
     {
         public SceneWire(string id, string group, string sourceNode, string targetNode, Pt start, Pt end, WireStyle style,
-                         double? laneFraction = null, double? pinX = null, IReadOnlyList<Pt> points = null)
+                         double? laneFraction = null, double? pinX = null, IReadOnlyList<Pt> points = null, BackRuns back = null)
         {
             LaneFraction = laneFraction;
             PinX = pinX;
             Points = points;
+            Back = back;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Group = group ?? throw new ArgumentNullException(nameof(group));
             SourceNode = sourceNode ?? "";
@@ -56,6 +58,9 @@ namespace StraightWire.Core
 
         /// <summary>Interior points of a hand-drawn wire; null for an automatic one.</summary>
         public IReadOnlyList<Pt> Points { get; }
+
+        /// <summary>Where a backwards wire's runs go; null, or null parts, for automatic. Other wires ignore it.</summary>
+        public BackRuns Back { get; }
     }
 
     /// <summary>
@@ -104,6 +109,9 @@ namespace StraightWire.Core
                 h.Add(w.Points?.Count ?? -1);
                 if (w.Points != null)
                     foreach (var p in w.Points) h.Add(p);
+                h.Add(w.Back?.Out ?? double.NaN);
+                h.Add(w.Back?.In ?? double.NaN);
+                h.Add(w.Back?.Cross ?? double.NaN);
             }
             return h.Value;
         }

@@ -83,6 +83,34 @@ namespace StraightWire.Core
             return SegmentAction.None;
         }
 
+        /// <summary>
+        /// Which run of an automatic backwards wire <paramref name="segment"/> belongs to, given its
+        /// runs as routed. The stubs are none. Anything else touching one vertical's x belongs to
+        /// that vertical: in 45° style its corners, all that is left of a short one. What is level,
+        /// or runs from one vertical's x to the other's (the single 45° crossing), is the crossing.
+        /// </summary>
+        public static BackRun BackRunFor(Pt[] path, BackRuns routed, int segment)
+        {
+            if (segment <= 0 || segment >= path.Length - 2) return BackRun.None;
+            Pt a = path[segment], b = path[segment + 1];
+            double outX = path[0].X + (routed.Out ?? Routing.Stub), inX = path[path.Length - 1].X - (routed.In ?? Routing.Stub);
+            bool AtOut(Pt q) => Math.Abs(q.X - outX) < 0.01;
+            bool AtIn(Pt q) => Math.Abs(q.X - inX) < 0.01;
+            bool touchesOut = AtOut(a) || AtOut(b), touchesIn = AtIn(a) || AtIn(b);
+            if (Math.Abs(a.Y - b.Y) < 0.01 || (touchesOut && touchesIn)) return BackRun.Cross;
+            return touchesOut ? BackRun.Out : touchesIn ? BackRun.In : BackRun.None;
+        }
+
+        /// <summary>
+        /// The runs a drag of <paramref name="run"/> makes: the stored runs, with that run at its routed
+        /// value moved by the mouse (sideways for a vertical, up or down for the crossing).
+        /// </summary>
+        public static BackRuns DragBack(BackRuns stored, BackRuns routed, BackRun run, double dx, double dy)
+        {
+            double delta = run == BackRun.Out ? dx : run == BackRun.In ? -dx : dy;
+            return stored.With(run, (routed[run] ?? 0) + delta);
+        }
+
         public static List<Pt> PointsOf(Pt[] path) => path.Skip(1).Take(Math.Max(0, path.Length - 2)).ToList();
 
         /// <summary>
