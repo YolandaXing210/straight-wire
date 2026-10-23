@@ -68,6 +68,9 @@ EDITING WIRES
   Click a wire                           Selects it (Shift-click adds or removes).
                                          Click anywhere else or press Esc to clear.
   Drag the middle of an automatic wire   Slides its lane; the others make room.
+  Drag a wire that runs backwards        Its two verticals slide sideways, the
+                                         run across slides up and down. Wires
+                                         from the same output move together.
   Drag a bend handle                     Moves that point; the wire becomes
                                          hand-drawn. Points snap to 0/45/90-degree
                                          lines and the grid; hold Option (Alt) to
