@@ -69,6 +69,6 @@ namespace StraightWire.Core.Tests
         [Fact]
         public void Back_steps_out_crosses_at_y_and_steps_in() =>
             Assert.Equal(new[] { P(380, 230), P(398, 230), P(398, 130), P(82, 130), P(82, 30), P(100, 30) },
-                Paths.Back(P(380, 230), P(100, 30), 130));
+                Paths.Back(P(380, 230), P(100, 30), 398, 82, 130));
     }
 }

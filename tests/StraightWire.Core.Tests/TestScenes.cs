@@ -27,10 +27,10 @@ namespace StraightWire.Core.Tests
         public Pt In(string node, double dy) => new Pt(_rects[node].X0, _rects[node].Y0 + dy);
 
         public string Wire(string from, string to, Pt start, Pt end, WireStyle style, string group = null,
-                           double? laneFraction = null, double? pinX = null, IReadOnlyList<Pt> points = null)
+                           double? laneFraction = null, double? pinX = null, IReadOnlyList<Pt> points = null, BackRuns back = null)
         {
             string id = "w" + _wires.Count.ToString("D3");
-            _wires.Add(new SceneWire(id, group ?? from + ":0", from, to, start, end, style, laneFraction, pinX, points));
+            _wires.Add(new SceneWire(id, group ?? from + ":0", from, to, start, end, style, laneFraction, pinX, points, back));
             return id;
         }
 

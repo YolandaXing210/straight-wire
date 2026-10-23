@@ -40,7 +40,10 @@ namespace StraightWire.Core
                 double span = w.Hi - w.Lo;
                 fractions[w.Id] = span > 0.5 ? (w.Lane - w.Lo) / span : 0.5;
             }
-            return new RouteResult(paths, Junctions.Find(forJunctions), fractions);
+            var backs = new Dictionary<string, BackRuns>(StringComparer.Ordinal);
+            foreach (var w in ctx.Jobs)
+                if (w.Routed && w.Kind == WireKind.Back) backs[w.Id] = new BackRuns(w.OutX - w.Ax, w.Bx - w.InX, w.Yb - w.AutoYb);
+            return new RouteResult(paths, Junctions.Find(forJunctions), fractions, backs);
         }
     }
 }

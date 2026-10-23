@@ -57,8 +57,8 @@ namespace StraightWire.Core
         // Lane wires (Lanes)
         public double Lo, Hi, YLo, YHi, Pref, P, Lane;
 
-        // Backwards wires (BackWires)
-        public double Yb;
+        // Backwards wires (BackWires): the two verticals' x, and the crossing's y as routed and as it would be untouched.
+        public double OutX, InX, Yb, AutoYb;
         public bool HasBand;
         public double Band0, Band1;
 

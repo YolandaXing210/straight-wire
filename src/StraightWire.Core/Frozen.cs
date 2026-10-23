@@ -30,7 +30,7 @@ namespace StraightWire.Core
                 else unsettled.Add(w.Group);
             }
             var dots = cached.Junctions.Where(j => !unsettled.Contains(j.Group)).ToList();
-            return new RouteResult(kept, dots, cached.LaneFractions);
+            return new RouteResult(kept, dots, cached.LaneFractions, cached.Backs);
         }
     }
 }

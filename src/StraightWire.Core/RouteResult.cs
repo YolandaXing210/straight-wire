@@ -19,11 +19,12 @@ namespace StraightWire.Core
     public sealed class RouteResult
     {
         public RouteResult(IReadOnlyDictionary<string, Pt[]> paths, IReadOnlyList<Junction> junctions,
-                           IReadOnlyDictionary<string, double> laneFractions = null)
+                           IReadOnlyDictionary<string, double> laneFractions = null, IReadOnlyDictionary<string, BackRuns> backs = null)
         {
             Paths = paths;
             Junctions = junctions;
             LaneFractions = laneFractions ?? new Dictionary<string, double>(StringComparer.Ordinal);
+            Backs = backs ?? new Dictionary<string, BackRuns>(StringComparer.Ordinal);
         }
 
         /// <summary>The polyline of every routed wire, by wire id. Curve wires have no entry.</summary>
@@ -36,6 +37,12 @@ namespace StraightWire.Core
         /// 1 = right end). A finished lane drag stores this.
         /// </summary>
         public IReadOnlyDictionary<string, double> LaneFractions { get; }
+
+        /// <summary>
+        /// For every automatic backwards wire, its runs as routed, every part filled in. A finished
+        /// drag of one run stores that part.
+        /// </summary>
+        public IReadOnlyDictionary<string, BackRuns> Backs { get; }
     }
 
     /// <summary>
