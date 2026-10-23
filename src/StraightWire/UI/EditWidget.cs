@@ -18,7 +18,8 @@ namespace StraightWire.UI
     /// Grasshopper offers every mouse press to its widgets before its components and before its
     /// own default behaviour (box selection, relay insertion), so a widget can take a press that
     /// lands on one of our wires and leave every other press exactly as it was. It claims a press
-    /// only on a routed wire or one of its handles, never over a component. Contains answers only
+    /// only on a routed wire or one of its handles, never over a component or within reach of a
+    /// grip, where Grasshopper would start a new wire. Contains answers only
     /// while the left button is down, so right-click menus and tooltips stay Grasshopper's; hover
     /// is tracked from the canvas's mouse moves instead (see Hover).
     /// </summary>
@@ -251,7 +252,10 @@ namespace StraightWire.UI
             return response;
         }
 
-        /// <summary>What the mouse is over: a handle of a selected or hovered wire first, then any routed wire. Nothing over a component.</summary>
+        /// <summary>
+        /// What the mouse is over: a handle of a selected or hovered wire first, then any routed wire.
+        /// Nothing over a component or near a grip.
+        /// </summary>
         static Target Find(GH_Canvas canvas, PointF canvasPoint)
         {
             var doc = canvas.Document;
@@ -261,6 +265,8 @@ namespace StraightWire.UI
             if (doc == null || routes == null || read == null) return default;
             var over = doc.FindAttribute(canvasPoint, false)?.DocObject;
             if (over != null && !(over is GH_Group)) return default;
+            // Grasshopper starts a new wire from a press this near a grip, which is where every wire begins and ends.
+            if (doc.RelevantObjectAtPoint(canvasPoint, GH_RelevantObjectFilter.Grips) != null) return default;
 
             var manual = new HashSet<string>(read.Wires.Where(w => w.Manual).Select(w => w.Id), StringComparer.Ordinal);
             var p = new Pt(canvasPoint.X, canvasPoint.Y);
