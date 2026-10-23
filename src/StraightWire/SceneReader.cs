@@ -107,6 +107,16 @@ namespace StraightWire
 
         public static string WireId(IGH_Param source, IGH_Param target) => source.InstanceGuid + ">" + target.InstanceGuid;
 
+        /// <summary>The source of every wire that runs backwards: back wires from one source share their out run.</summary>
+        public static Dictionary<string, string> BackGroups(GH_Document doc)
+        {
+            var groups = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var (source, target) in Connections(doc))
+                if (target.Attributes.InputGrip.X - source.Attributes.OutputGrip.X < Routing.BackwardBelow)
+                    groups[WireId(source, target)] = source.InstanceGuid.ToString();
+            return groups;
+        }
+
         /// <summary>For every wire, the top-left corners of its source and target components: what hand-drawn points are anchored to.</summary>
         public static Dictionary<string, (Pt Source, Pt Target)> Anchors(GH_Document doc)
         {

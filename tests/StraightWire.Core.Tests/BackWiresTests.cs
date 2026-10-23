@@ -172,6 +172,16 @@ namespace StraightWire.Core.Tests
                 BackWires.Diagonal(Channelled(ScenarioB(new BackRuns(@out: 30)))));
 
         [Fact]
+        public void A_single_diagonal_crossing_reports_where_it_is_drawn()
+        {
+            // The diagonal's middle stays within 146..314 (half its 156 run inside the 68..392 gap).
+            var b = ScenarioB(new BackRuns(cross: -150));
+            Assert.Equal(new[] { P(220, 430), P(238, 430), P(238, 224), P(82, 68), P(82, 30), P(100, 30) },
+                BackWires.Diagonal(Channelled(b)));
+            Assert.Equal(-84, Router.Route(b.Build(), null).Backs["w000"].Cross);
+        }
+
+        [Fact]
         public void A_forward_wire_ignores_back_runs()
         {
             var b = new SceneBuilder().Node("S", -80, 80).Node("T", 400, 280);

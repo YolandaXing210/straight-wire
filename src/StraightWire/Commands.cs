@@ -110,8 +110,9 @@ namespace StraightWire
                 return points.Count == 0 ? edited.WithoutEdits(new[] { wireId }) : edited;
             });
 
+        /// <summary>Back to automatic; a back wire also resets the out run its output's back wires share.</summary>
         public static void ResetWires(GH_Document doc, IEnumerable<string> wireIds) =>
-            Edit(doc, "Reset Wires", current => current.WithoutEdits(wireIds));
+            Edit(doc, "Reset Wires", current => current.WithoutEdits(wireIds, SceneReader.BackGroups(doc)));
 
         /// <summary>Tidy All, or Tidy Selected when the selection makes two or more blocks.</summary>
         public static void Tidy()

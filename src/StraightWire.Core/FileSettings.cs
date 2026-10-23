@@ -126,6 +126,28 @@ namespace StraightWire.Core
             return new FileSettings(Mode, Spacing, Overrides, lanes, points, backs);
         }
 
+        /// <summary>
+        /// Back to automatic, and for every back wire among them, the out run it shares with the
+        /// other back wires from its output too. <paramref name="backGroups"/> gives the output of
+        /// each wire that runs backwards.
+        /// </summary>
+        public FileSettings WithoutEdits(IEnumerable<string> wireIds, IReadOnlyDictionary<string, string> backGroups)
+        {
+            var ids = wireIds.ToList();
+            var outputs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string id in ids)
+                if (backGroups.TryGetValue(id, out string output)) outputs.Add(output);
+            var backs = Copy(Backs);
+            foreach (var kv in Backs)
+                if (backGroups.TryGetValue(kv.Key, out string output) && outputs.Contains(output))
+                {
+                    var runs = kv.Value.With(BackRun.Out, null);
+                    if (runs.IsEmpty) backs.Remove(kv.Key);
+                    else backs[kv.Key] = runs;
+                }
+            return new FileSettings(Mode, Spacing, Overrides, Lanes, Points, backs).WithoutEdits(ids);
+        }
+
         /// <summary>Drops everything kept for wires that no longer exist, so files do not collect dead ids.</summary>
         public FileSettings Pruned(ICollection<string> liveWireIds)
         {

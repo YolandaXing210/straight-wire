@@ -1,10 +1,12 @@
 // A press near a parameter grip starts a new wire, as it does without Straight Wire: the editing
 // widget leaves every press Grasshopper sees as a grip alone, even where a routed wire runs
-// out of that grip. Presses on the same wires further out still select them.
+// out of that grip. Presses on the same wires further out still select them, and a selected
+// wire's bend point near a grip is still a handle.
 #r "/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugIns/GrasshopperPlugin.rhp/Grasshopper.dll"
 #r "/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugIns/GrasshopperPlugin.rhp/GH_IO.dll"
 using System.Drawing;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.Loader;
 using System.Windows.Forms;
 using Grasshopper;
@@ -37,11 +39,12 @@ GH_CanvasMouseEvent Ev(PointF p)
     var c = canvas.Viewport.ProjectPoint(p);
     return new GH_CanvasMouseEvent(new Point((int)c.X, (int)c.Y), p, MouseButtons.Left, 1, 0);
 }
-List<PointF[]> Paths() =>
+List<(string Id, PointF[] Pts)> Paths() =>
     ((string)Dev("Paths")).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line =>
-        line.Split('|')[2].Split(';').Select(xy => xy.Split(','))
-            .Select(a => new PointF(float.Parse(a[0], CultureInfo.InvariantCulture), float.Parse(a[1], CultureInfo.InvariantCulture))).ToArray())
+        (line.Split('|')[0], line.Split('|')[2].Split(';').Select(xy => xy.Split(','))
+            .Select(a => new PointF(float.Parse(a[0], CultureInfo.InvariantCulture), float.Parse(a[1], CultureInfo.InvariantCulture))).ToArray()))
         .ToList();
+string F(double v) => v.ToString(CultureInfo.InvariantCulture);
 // The point d along a path from its start.
 PointF Along(PointF[] pts, float d)
 {
@@ -77,8 +80,10 @@ try
 
     int near = 0, nearTaken = 0, far = 0, farTaken = 0;
     var taken = new List<string>();
-    foreach (var path in Paths())
+    var empty = new PointF(doc.BoundingBox(false).Right + 300, doc.BoundingBox(false).Bottom + 300);
+    foreach (var (_, path) in Paths())
     {
+        Press(empty);   // no wire selected, so no handles in the way
         var reversed = path.Reverse().ToArray();
         foreach (float d in new[] { 3f, 6f, 9f, 11f })
             foreach (var p in new[] { Along(path, d), Along(reversed, d) })
@@ -101,9 +106,26 @@ try
         }
     }
     output.AppendLine($"presses on a wire inside Grasshopper's grip radius: {near}, taken by the widget: {nearTaken} (want 0)");
-    foreach (string t in taken) output.AppendLine("  taken at " + t);
+    foreach (string where in taken) output.AppendLine("  taken at " + where);
     output.AppendLine($"presses on a wire's middle, clear of everything: {far}, taken by the widget: {farTaken} (want {far})");
-    output.AppendLine(nearTaken == 0 && farTaken == far && near > 0 && far > 0 ? "PASS" : "FAIL");
+
+    // Make a lane wire hand-drawn with its first point 10 from its output grip, and select it.
+    var (id, lane) = Paths().First(p => p.Pts.Length == 4 && Math.Abs(p.Pts[1].Y - p.Pts[2].Y) > 40);
+    PointF s = lane[0], t = lane[3], handle = new PointF(s.X + 10, s.Y);
+    doc.ValueTable.SetValue("StraightWire.v1", "{\"v\":1,\"mode\":\"ortho\",\"spacing\":10,\"wires\":{},\"points\":{\"" + id +
+        "\":{\"at\":[0,0,0,0],\"p\":[" + F(handle.X) + "," + F(s.Y) + "," + F(handle.X) + "," + F(t.Y) + "]}}}");
+    var asm = (AppDomain.CurrentDomain.GetData("StraightWire.DevContext") as AssemblyLoadContext)?.Assemblies.FirstOrDefault(a => a.GetName().Name == "StraightWire")
+              ?? AppDomain.CurrentDomain.GetAssemblies().First(a => a.GetName().Name == "StraightWire");
+    asm.GetType("StraightWire.DocStore").GetMethod("Reload").Invoke(null, new object[] { doc });
+    Paint();
+    Press(new PointF(handle.X, (s.Y + t.Y) / 2));
+    bool isGrip = IsGrip(handle);
+    var onHandle = Press(handle);
+    var beside = Press(new PointF(s.X + 2, s.Y));
+    output.AppendLine($"selected wire's bend point 10 from its grip (grip zone: {isGrip}): {onHandle} (want Capture); " +
+                      $"the same wire 2 from the grip: {beside} (want Ignore)");
+    bool handles = isGrip && onHandle == GH_ObjectResponse.Capture && beside == GH_ObjectResponse.Ignore;
+    output.AppendLine(nearTaken == 0 && farTaken == far && near > 0 && far > 0 && handles ? "PASS" : "FAIL");
 }
 finally
 {

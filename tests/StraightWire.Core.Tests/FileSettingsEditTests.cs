@@ -101,6 +101,27 @@ namespace StraightWire.Core.Tests
         }
 
         [Fact]
+        public void Resetting_a_back_wire_resets_the_out_run_its_output_shares()
+        {
+            var s = new FileSettings(WireStyle.Orthogonal, 10)
+                .WithBack("s>a", new BackRuns(@out: 40))
+                .WithBack("s>b", new BackRuns(@out: 40, cross: 5))
+                .WithBack("t>c", new BackRuns(@out: 30));
+            var groups = new Dictionary<string, string> { ["s>a"] = "s", ["s>b"] = "s", ["s>e"] = "s", ["t>c"] = "t" };
+
+            var reset = s.WithoutEdits(new[] { "s>a" }, groups);
+            Assert.False(reset.Backs.ContainsKey("s>a"));
+            Assert.Equal(((double?)null, 5.0), (reset.Backs["s>b"].Out, reset.Backs["s>b"].Cross.Value));
+            Assert.Equal(30, reset.Backs["t>c"].Out);
+
+            // A back wire with nothing stored of its own still shows its output's out run.
+            Assert.Null(s.WithoutEdits(new[] { "s>e" }, groups).Backs["s>b"].Out);
+
+            // A wire that is not a back wire leaves its output's out run alone.
+            Assert.Equal(40, s.WithoutEdits(new[] { "s>f" }, groups).Backs["s>b"].Out);
+        }
+
+        [Fact]
         public void Every_other_change_keeps_the_edits()
         {
             var s = Edited().WithMode(WireStyle.Diagonal).WithSpacing(16).WithOverride(new[] { "q>r" }, WireStyle.Curve).WithoutOverride(new[] { "q>r" })

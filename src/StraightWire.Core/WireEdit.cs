@@ -85,23 +85,20 @@ namespace StraightWire.Core
 
         /// <summary>
         /// Which run of an automatic backwards wire <paramref name="segment"/> belongs to, given its
-        /// runs as routed: the verticals by their x, anything between them the crossing (with its
-        /// corners in 45° style), the stubs and their corners none.
+        /// runs as routed. The stubs are none. Anything else touching one vertical's x belongs to
+        /// that vertical: in 45° style its corners, all that is left of a short one. What is level,
+        /// or runs from one vertical's x to the other's (the single 45° crossing), is the crossing.
         /// </summary>
         public static BackRun BackRunFor(Pt[] path, BackRuns routed, int segment)
         {
             if (segment <= 0 || segment >= path.Length - 2) return BackRun.None;
+            Pt a = path[segment], b = path[segment + 1];
             double outX = path[0].X + (routed.Out ?? Routing.Stub), inX = path[path.Length - 1].X - (routed.In ?? Routing.Stub);
-            bool VerticalAt(int i, double x) => Math.Abs(path[i].X - x) < 0.01 && Math.Abs(path[i + 1].X - x) < 0.01;
-            if (VerticalAt(segment, outX)) return BackRun.Out;
-            if (VerticalAt(segment, inX)) return BackRun.In;
-            int first = -1, last = -1;
-            for (int i = 0; i < path.Length - 1; i++)
-            {
-                if (first < 0 && VerticalAt(i, outX)) first = i;
-                if (VerticalAt(i, inX)) last = i;
-            }
-            return first >= 0 && last > first && segment > first && segment < last ? BackRun.Cross : BackRun.None;
+            bool AtOut(Pt q) => Math.Abs(q.X - outX) < 0.01;
+            bool AtIn(Pt q) => Math.Abs(q.X - inX) < 0.01;
+            bool touchesOut = AtOut(a) || AtOut(b), touchesIn = AtIn(a) || AtIn(b);
+            if (Math.Abs(a.Y - b.Y) < 0.01 || (touchesOut && touchesIn)) return BackRun.Cross;
+            return touchesOut ? BackRun.Out : touchesIn ? BackRun.In : BackRun.None;
         }
 
         /// <summary>

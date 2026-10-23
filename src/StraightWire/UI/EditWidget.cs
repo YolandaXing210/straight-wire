@@ -296,7 +296,8 @@ namespace StraightWire.UI
 
         /// <summary>
         /// What the mouse is over: a handle of a selected or hovered wire first, then any routed wire
-        /// (for an automatic backwards wire, which of its runs). Nothing over a component or near a grip.
+        /// (for an automatic backwards wire, which of its runs). Nothing over a component, and no
+        /// wire, only a handle, near a grip.
         /// </summary>
         static Target Find(GH_Canvas canvas, PointF canvasPoint)
         {
@@ -307,8 +308,6 @@ namespace StraightWire.UI
             if (doc == null || routes == null || read == null) return default;
             var over = doc.FindAttribute(canvasPoint, false)?.DocObject;
             if (over != null && !(over is GH_Group)) return default;
-            // Grasshopper starts a new wire from a press this near a grip, which is where every wire begins and ends.
-            if (doc.RelevantObjectAtPoint(canvasPoint, GH_RelevantObjectFilter.Grips) != null) return default;
 
             var manual = new HashSet<string>(read.Wires.Where(w => w.Manual).Select(w => w.Id), StringComparer.Ordinal);
             var p = new Pt(canvasPoint.X, canvasPoint.Y);
@@ -322,6 +321,9 @@ namespace StraightWire.UI
                 int handle = WireEdit.HitHandle(path, p, HandlePx * zoomInverse);
                 if (handle >= 0) return new Target(Kind.Point, id, handle, path, manual.Contains(id));
             }
+
+            // Grasshopper starts a new wire from a press this near a grip, which is where every wire begins and ends.
+            if (doc.RelevantObjectAtPoint(canvasPoint, GH_RelevantObjectFilter.Grips) != null) return default;
 
             var hit = WireEdit.HitWire(routes.Paths, p, HitPx * zoomInverse);
             if (hit == null) return default;

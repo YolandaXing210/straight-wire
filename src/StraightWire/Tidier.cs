@@ -44,7 +44,8 @@ namespace StraightWire
             var doc = canvas?.Document;
             if (doc == null) return "no document";
             var editor = WireEditor.For(canvas);
-            if (canvas.ActiveInteraction != null || CanvasHook.PretendDrag || editor.Live != null || editor.Pin != null) return "busy";
+            if (canvas.ActiveInteraction != null || CanvasHook.PretendDrag || editor.Live != null || editor.Pin != null || editor.BackPins != null)
+                return "busy";
 
             var read = Read(canvas);
             if (read.Plan.Links.Count == 0)

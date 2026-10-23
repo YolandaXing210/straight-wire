@@ -38,12 +38,18 @@ namespace StraightWire.Core
                         w.InX = Clear(ctx, w.InX, double.NegativeInfinity, w.Bx - Routing.Stub,
                                       Math.Min(w.By, w.Yb), Math.Max(w.By, w.Yb), new[] { w.ANode, w.BNode });
                 }
-                if (outRun == null) continue;
-                var first = g[0];
-                double y0 = Math.Min(first.Ay, g.Min(w => w.Yb)), y1 = Math.Max(first.Ay, g.Max(w => w.Yb));
-                var own = g.Select(w => w.BNode).Append(first.ANode).ToArray();
-                double x = Clear(ctx, first.OutX, first.Ax + Routing.Stub, double.PositiveInfinity, y0, y1, own);
-                foreach (var w in g) w.OutX = x;
+                if (outRun != null)
+                {
+                    var first = g[0];
+                    double y0 = Math.Min(first.Ay, g.Min(w => w.Yb)), y1 = Math.Max(first.Ay, g.Max(w => w.Yb));
+                    var own = g.Select(w => w.BNode).Append(first.ANode).ToArray();
+                    double x = Clear(ctx, first.OutX, first.Ax + Routing.Stub, double.PositiveInfinity, y0, y1, own);
+                    foreach (var w in g) w.OutX = x;
+                }
+                // A single 45° crossing keeps its middle where it fits, so Yb (and what RouteResult
+                // reports for a dragged crossing) is where it is drawn.
+                foreach (var w in g)
+                    if (w.Style == WireStyle.Diagonal && DiagonalMid(w) is double mid) w.Yb = mid;
             }
         }
 
@@ -159,19 +165,26 @@ namespace StraightWire.Core
         /// </summary>
         public static List<Pt> Diagonal(WireJob w)
         {
-            if (!w.HasBand) return null;
+            if (!(DiagonalMid(w) is double mid)) return null;
             double x1 = w.OutX, x2 = w.InX, run = x1 - x2;
-            double sg = w.By < w.Ay ? -1 : 1, m = Routing.Chamfer + 2;
-            double lo = Math.Max(w.Band0, Math.Min(w.Ay, w.By) + m);
-            double hi = Math.Min(w.Band1, Math.Max(w.Ay, w.By) - m);
-            if (hi - lo < run) return null;
-            double mid = Geo.Clamp(w.Yb, lo + run / 2, hi - run / 2);
+            double sg = w.By < w.Ay ? -1 : 1;
             double yp = mid - sg * run / 2, yq = mid + sg * run / 2;
             return new List<Pt>
             {
                 new Pt(w.Ax, w.Ay), new Pt(x1, w.Ay), new Pt(x1, yp),
                 new Pt(x2, yq), new Pt(x2, w.By), new Pt(w.Bx, w.By),
             };
+        }
+
+        /// <summary>The middle of the single 45° crossing, or null when the gap is too short for one.</summary>
+        static double? DiagonalMid(WireJob w)
+        {
+            if (!w.HasBand) return null;
+            double run = w.OutX - w.InX, m = Routing.Chamfer + 2;
+            double lo = Math.Max(w.Band0, Math.Min(w.Ay, w.By) + m);
+            double hi = Math.Min(w.Band1, Math.Max(w.Ay, w.By) - m);
+            if (hi - lo < run) return null;
+            return Geo.Clamp(w.Yb, lo + run / 2, hi - run / 2);
         }
 
         public static List<Pt> Orthogonal(WireJob w) => Paths.Back(new Pt(w.Ax, w.Ay), new Pt(w.Bx, w.By), w.OutX, w.InX, w.Yb);

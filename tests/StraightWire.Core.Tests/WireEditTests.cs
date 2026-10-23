@@ -112,11 +112,28 @@ namespace StraightWire.Core.Tests
         [Fact]
         public void BackRunFor_maps_a_chamfered_back_wire()
         {
-            // Stub, its corner, the out vertical, three pieces of crossing, the in vertical, its corner, stub.
+            // Stub, then each vertical with the corners on it, the crossing between them, stub.
             var chamfered = Core.Paths.Chamfer(Back, 14).ToArray();
-            Assert.Equal(new[] { BackRun.None, BackRun.None, BackRun.Out, BackRun.Cross, BackRun.Cross, BackRun.Cross,
-                                 BackRun.In, BackRun.None, BackRun.None },
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Out, BackRun.Out, BackRun.Cross,
+                                 BackRun.In, BackRun.In, BackRun.In, BackRun.None },
                 Enumerable.Range(0, chamfered.Length - 1).Select(i => WireEdit.BackRunFor(chamfered, Stubs, i)));
+        }
+
+        [Fact]
+        public void BackRunFor_maps_verticals_the_chamfers_used_up()
+        {
+            // A 25-long out vertical is all corner: its two chamfers meet at x 298.
+            var path = new[] { P(280, 110), P(285.5, 110), P(298, 97.5), P(285.5, 85), P(-5.5, 85), P(-18, 72.5), P(-5.5, 60), P(0, 60) };
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Out, BackRun.Cross, BackRun.In, BackRun.In, BackRun.None },
+                Enumerable.Range(0, path.Length - 1).Select(i => WireEdit.BackRunFor(path, Stubs, i)));
+        }
+
+        [Fact]
+        public void BackRunFor_maps_a_single_diagonal_crossing()
+        {
+            var path = new[] { P(220, 430), P(224, 430), P(238, 416), P(238, 308), P(82, 152), P(82, 44), P(96, 30), P(100, 30) };
+            Assert.Equal(new[] { BackRun.None, BackRun.Out, BackRun.Out, BackRun.Cross, BackRun.In, BackRun.In, BackRun.None },
+                Enumerable.Range(0, path.Length - 1).Select(i => WireEdit.BackRunFor(path, Stubs, i)));
         }
 
         [Fact]

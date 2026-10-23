@@ -57,11 +57,13 @@ Success:
 
 ## 4. Editing
 
-- Hit-testing a back wire's segment (Core, `WireEdit`): the first and last segments are the stubs (select only). A vertical segment is the out run if it is nearer the out run's x than the in run's x, otherwise the in run. Any other segment is the crossing.
+- Hit-testing a back wire's segment (Core, `WireEdit`): the first and last segments are the stubs (select only). A level segment, or one running from the out run's x to the in run's x (the single 45° crossing), is the crossing. Any other segment touching the out run's x is the out run, touching the in run's x the in run: in 45° style that takes in the corners, which are all that is left of a vertical shorter than two chamfers.
 - Cursor: sideways arrows over the verticals, up-down arrows over the crossing.
 - Drag: on press the widget notes the wires it moves (for an out run, every back wire from that output; otherwise the one hit), their stored runs, and the hit wire's routed runs. While dragging, each moved wire's live runs are its stored ones with the dragged part replaced by the hit wire's routed value plus the mouse movement (x for out, −x for in, y for the crossing). The editor hands those to the scene, and the canvas routes live, as for a lane drag.
 - Release: the hit wire's routed value of the dragged part (after the limits) is stored on every moved wire, merged into its stored runs. One undo step, "Move Wire Lane".
-- Delete/Backspace reset clears it; Tidy clears it for the wires it resets, as it does lanes.
+- Delete/Backspace reset clears it. Resetting a back wire also clears the out run its output's back wires share, so the trunk goes back too. Tidy clears the runs of the wires it resets, as it does lanes, and waits while a run is being dragged.
+- When the crossing is a single 45° diagonal, routing keeps the diagonal's middle where it fits, and that is the crossing y it reports, so a drag past the limit stores no hidden offset.
+- Grip presses (see the grip fix on this branch): a selected or hovered wire's handle is still a handle near a grip; only a plain wire hit gives way to the grip.
 
 ## 5. Persistence
 

@@ -1,6 +1,7 @@
 // Drags each run of the fixture's backwards wire (right-angle style) with constructed mouse
 // events: the out vertical right, the in vertical left, the crossing down. Each stays where it
-// was dropped, as one "Move Wire Lane" undo step, and Delete puts the wire back.
+// was dropped, as one "Move Wire Lane" undo step, and Delete puts the wire back. A second back
+// wire from the same output shares the out run, moves it for both, and Delete resets it for both.
 #r "/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugIns/GrasshopperPlugin.rhp/Grasshopper.dll"
 #r "/Applications/Rhino 8.app/Contents/Frameworks/RhCore.framework/Resources/ManagedPlugIns/GrasshopperPlugin.rhp/GH_IO.dll"
 using System.Drawing;
@@ -114,6 +115,28 @@ try
     Paint();
     var undone = Paths().First(p => p.Id == back.Id).Pts;
     Check("Undo brings the edit back: " + Show(undone), undone.SequenceEqual(afterCross));
+
+    // A second back wire from the same output, into the target's other input, shares the out run.
+    var ids = back.Id.Split('>');
+    var source = (IGH_Param)doc.FindObject(new Guid(ids[0]), false);
+    var target = (IGH_Param)doc.FindObject(new Guid(ids[1]), false);
+    var other = ((IGH_Component)target.Attributes.GetTopLevel.DocObject).Params.Input.First(p => p != target);
+    other.AddSource(source);
+    Paint();
+    string sibling = source.InstanceGuid + ">" + other.InstanceGuid;
+    output.AppendLine("second back wire: " + Show(Paths().First(p => p.Id == sibling).Pts));
+    Check("it joins the stored out run", Math.Abs(Paths().First(p => p.Id == sibling).Pts[1].X - afterCross[1].X) < 0.01);
+    output.AppendLine("its out vertical +20 x:");
+    var moved = Drag(sibling, 1, 20, 0);
+    Check("both out verticals moved 20 right", Math.Abs(moved[1].X - (afterCross[1].X + 20)) < 0.01 &&
+                                               Math.Abs(Paths().First(p => p.Id == back.Id).Pts[1].X - moved[1].X) < 0.01);
+    var crossing = Paths().First(p => p.Id == back.Id).Pts;
+    widget.RespondToMouseDown(canvas, Ev(Mid(crossing[2], crossing[3])));
+    widget.RespondToMouseUp(canvas, Ev(Mid(crossing[2], crossing[3])));
+    typeof(Control).GetMethod("OnKeyDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(canvas, new object[] { new KeyEventArgs(Keys.Delete) });
+    Paint();
+    Check("Delete on the first puts both out verticals back", Paths().First(p => p.Id == back.Id).Pts.SequenceEqual(start) &&
+          Math.Abs(Paths().First(p => p.Id == sibling).Pts[1].X - start[1].X) < 0.01 && Field("backs") == "backs=0");
     output.AppendLine(pass ? "PASS" : "FAIL");
 }
 finally
