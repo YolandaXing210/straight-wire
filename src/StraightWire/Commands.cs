@@ -92,6 +92,15 @@ namespace StraightWire
         public static void SetLane(GH_Document doc, string wireId, double fraction) =>
             Edit(doc, "Move Wire Lane", current => current.WithLane(wireId, fraction));
 
+        /// <summary>Keeps a backwards wire's run where the user dropped it, on every wire the drag moved.</summary>
+        public static void SetBack(GH_Document doc, IReadOnlyCollection<string> wireIds, BackRun run, double value) =>
+            Edit(doc, "Move Wire Lane", current =>
+            {
+                foreach (string id in wireIds)
+                    current = current.WithBack(id, (current.Backs.TryGetValue(id, out var runs) ? runs : new BackRuns()).With(run, value));
+                return current;
+            });
+
         /// <summary>Makes a wire hand-drawn through these points; no points makes it automatic again.</summary>
         public static void SetPoints(GH_Document doc, string wireId, IReadOnlyList<Pt> points, string undoName) =>
             Edit(doc, undoName, current =>

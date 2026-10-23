@@ -6,7 +6,8 @@ Windows and macOS.
 
 The interaction was designed in a browser prototype first:
 [`docs/reference/straight-wire-prototype.html`](docs/reference/straight-wire-prototype.html).
-Wires can be edited by hand: click to select, drag a lane sideways, drag or double-click to
+Wires can be edited by hand: click to select, drag a lane sideways (on a wire that runs
+backwards, either vertical sideways or the run across up and down), drag or double-click to
 add and remove bend points, Delete to reset. Every edit is one Grasshopper undo step and is
 saved in the file.
 

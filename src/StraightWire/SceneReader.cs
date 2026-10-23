@@ -69,9 +69,12 @@ namespace StraightWire
                         draw.Manual = manual != null;
                         double? lane = manual == null && settings.Lanes.TryGetValue(draw.Id, out double f) ? f : (double?)null;
                         double? pin = editor?.Pin is (string pinId, double pinX) && pinId == draw.Id ? pinX : (double?)null;
+                        BackRuns back = null;
+                        if (manual == null && (editor?.BackPins == null || !editor.BackPins.TryGetValue(draw.Id, out back)))
+                            settings.Backs.TryGetValue(draw.Id, out back);
                         wires.Add(new SceneWire(draw.Id, source.InstanceGuid.ToString(),
                             source.Attributes.GetTopLevel.DocObject.InstanceGuid.ToString(), obj.InstanceGuid.ToString(),
-                            ToPt(draw.Start), ToPt(draw.End), draw.Style, lane, pin, manual?.Points));
+                            ToPt(draw.Start), ToPt(draw.End), draw.Style, lane, pin, manual?.Points, back));
                     }
             }
             return new SceneRead { Scene = new Scene(nodes, wires, settings.Spacing), Wires = draws, RoutedCount = routed };

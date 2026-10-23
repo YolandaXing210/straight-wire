@@ -13,7 +13,8 @@ using StraightWire.Core;
 namespace StraightWire.UI
 {
     /// <summary>
-    /// Wire editing with the mouse: select, slide a lane, drag and add or remove bend points.
+    /// Wire editing with the mouse: select, slide a lane (or a backwards wire's verticals and
+    /// crossing), drag and add or remove bend points.
     ///
     /// Grasshopper offers every mouse press to its widgets before its components and before its
     /// own default behaviour (box selection, relay insertion), so a widget can take a press that
@@ -28,17 +29,18 @@ namespace StraightWire.UI
         const float HitPx = 6, HandlePx = 7, DragPx = 3, SnapPx = 8;
         const double Grid = 10;
 
-        enum Kind { None, Lane, Segment, Point }
+        enum Kind { None, Lane, Segment, Point, Run }
 
         readonly struct Target
         {
-            public Target(Kind kind, string id, int index, Pt[] path, bool manual)
+            public Target(Kind kind, string id, int index, Pt[] path, bool manual, BackRun run = BackRun.None)
             {
                 Kind = kind;
                 Id = id;
                 Index = index;
                 Path = path;
                 Manual = manual;
+                Run = run;
             }
 
             public Kind Kind { get; }
@@ -49,6 +51,10 @@ namespace StraightWire.UI
 
             public Pt[] Path { get; }
             public bool Manual { get; }
+
+            /// <summary>For Kind.Run, which run of a backwards wire.</summary>
+            public BackRun Run { get; }
+
             public bool Hit => Id != null;
         }
 
@@ -58,6 +64,10 @@ namespace StraightWire.UI
         PointF _downCanvas;
         bool _dragging;
         List<Pt> _points0;
+
+        // A run drag: the stored runs of every wire it moves, and the hit wire's runs as routed.
+        Dictionary<string, BackRuns> _runs0;
+        BackRuns _routed0;
 
         public override bool Visible
         {
@@ -90,7 +100,8 @@ namespace StraightWire.UI
                 canvas.Invalidate();
             }
             if (target.Hit)
-                canvas.Cursor = target.Kind == Kind.Lane ? Cursors.SizeWE
+                canvas.Cursor = target.Kind == Kind.Lane || (target.Kind == Kind.Run && target.Run != BackRun.Cross) ? Cursors.SizeWE
+                              : target.Kind == Kind.Run ? Cursors.SizeNS
                               : target.Kind == Kind.Segment || target.Kind == Kind.Point ? Cursors.SizeAll
                               : Cursors.Hand;
         }
@@ -143,8 +154,26 @@ namespace StraightWire.UI
             _downCanvas = e.CanvasLocation;
             _dragging = false;
             _points0 = CurrentPoints(canvas.Document, target);
+            if (target.Kind == Kind.Run) StartRun(canvas.Document, editor, target);
             canvas.Invalidate();
             return GH_ObjectResponse.Capture;
+        }
+
+        /// <summary>
+        /// Notes what a run drag moves: for an out run every back wire from that output, since they
+        /// share it; otherwise the wire hit.
+        /// </summary>
+        void StartRun(GH_Document doc, WireEditor editor, Target target)
+        {
+            var stored = DocStore.Get(doc).Effective.Backs;
+            var ids = new List<string> { target.Id };
+            if (target.Run == BackRun.Out)
+            {
+                var source = editor.LastRead.Wires.First(w => w.Id == target.Id).Source;
+                ids = editor.LastRead.Wires.Where(w => w.Source == source && editor.LastRoutes.Backs.ContainsKey(w.Id)).Select(w => w.Id).ToList();
+            }
+            _runs0 = ids.ToDictionary(id => id, id => stored.TryGetValue(id, out var runs) ? runs : new BackRuns(), StringComparer.Ordinal);
+            _routed0 = editor.LastRoutes.Backs[target.Id];
         }
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
@@ -186,6 +215,12 @@ namespace StraightWire.UI
                     editor.Live = (_press.Id, PathOf(start, WireEdit.SlideSegment(path0, _points0, _press.Index, dx, dy, Grid, free), end));
                     break;
                 }
+                case Kind.Run:
+                {
+                    double dx = e.CanvasLocation.X - _downCanvas.X, dy = e.CanvasLocation.Y - _downCanvas.Y;
+                    editor.BackPins = _runs0.ToDictionary(kv => kv.Key, kv => WireEdit.DragBack(kv.Value, _routed0, _press.Run, dx, dy), StringComparer.Ordinal);
+                    break;
+                }
             }
             canvas.Refresh();
         }
@@ -202,6 +237,8 @@ namespace StraightWire.UI
             {
                 editor.Pin = null;
                 editor.Live = null;
+                editor.BackPins = null;
+                _runs0 = null;
                 _press = default;
                 _dragging = false;
                 sender.Refresh();
@@ -217,6 +254,11 @@ namespace StraightWire.UI
             {
                 if (editor.LastRoutes != null && editor.LastRoutes.LaneFractions.TryGetValue(_press.Id, out double fraction))
                     Commands.SetLane(doc, _press.Id, fraction);
+            }
+            else if (_press.Kind == Kind.Run)
+            {
+                if (editor.LastRoutes != null && editor.LastRoutes.Backs.TryGetValue(_press.Id, out var routed) && routed[_press.Run] is double value)
+                    Commands.SetBack(doc, _runs0.Keys.ToList(), _press.Run, value);
             }
             else if (editor.Live is (string id, Pt[] live) && id == _press.Id)
             {
@@ -253,8 +295,8 @@ namespace StraightWire.UI
         }
 
         /// <summary>
-        /// What the mouse is over: a handle of a selected or hovered wire first, then any routed wire.
-        /// Nothing over a component or near a grip.
+        /// What the mouse is over: a handle of a selected or hovered wire first, then any routed wire
+        /// (for an automatic backwards wire, which of its runs). Nothing over a component or near a grip.
         /// </summary>
         static Target Find(GH_Canvas canvas, PointF canvasPoint)
         {
@@ -287,6 +329,11 @@ namespace StraightWire.UI
             bool isManual = manual.Contains(hit.Value.Id);
             var action = WireEdit.ActionFor(routes.LaneFractions.ContainsKey(hit.Value.Id), isManual, hit.Value.Segment, hitPath.Length);
             var kind = action == SegmentAction.Lane ? Kind.Lane : action == SegmentAction.Segment ? Kind.Segment : Kind.None;
+            if (kind == Kind.None && routes.Backs.TryGetValue(hit.Value.Id, out var runs))
+            {
+                var run = WireEdit.BackRunFor(hitPath, runs, hit.Value.Segment);
+                if (run != BackRun.None) return new Target(Kind.Run, hit.Value.Id, hit.Value.Segment, hitPath, isManual, run);
+            }
             return new Target(kind, hit.Value.Id, hit.Value.Segment, hitPath, isManual);
         }
 
